@@ -110,7 +110,6 @@ def run_in_thread(fn, *args):
     return thread
 
 def handle_message(message):
-
     global in_position, closing_prices
     if 'data' in message and len(message['data']) > 0:
         candle = message['data'][0]
@@ -120,7 +119,6 @@ def handle_message(message):
             closing_prices.append(closing_price)
 
         lower_band, sma, upper_band = calculate_bollinger_bands(list(closing_prices), multiplier)
-        print(f"Current SMA: {sma}, Lower Band: {lower_band}, Upper Band: {upper_band}")
         if lower_band is not None and upper_band is not None:
             if not in_position:
                 if closing_price <= lower_band * 0.985:
@@ -129,6 +127,8 @@ def handle_message(message):
                 elif closing_price >= upper_band * 1.015:
                     print("Sell Signal detected on false breakout")
                     create_order(symbol, session, "SHORT", closing_price, cash, marzha, take, stop)
+                else:
+                    print("Условия не выполняются")
             else:
                 in_position = check_open_positions(symbol, session)
 
