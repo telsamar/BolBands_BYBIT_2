@@ -115,7 +115,7 @@ def handle_message(message):
         candle = message['data'][0]
         closing_price = float(candle['close'])
 
-        if candle['confirm'] == False:
+        if candle['confirm'] == True:
             closing_prices.append(closing_price)
 
         lower_band, sma, upper_band = calculate_bollinger_bands(list(closing_prices), multiplier)
