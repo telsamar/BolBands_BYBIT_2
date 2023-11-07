@@ -23,7 +23,7 @@ marzha = float(settings["маржа"])
 take = float(settings["тейк"])
 stop = float(settings["стоп"])
 
-period = 2
+period = 20
 multiplier = 2
 closing_prices = deque(maxlen=period)
 in_position = False
@@ -123,7 +123,6 @@ def handle_message(message):
         print(f"Current SMA: {sma}, Lower Band: {lower_band}, Upper Band: {upper_band}")
         if lower_band is not None and upper_band is not None:
             if not in_position:
-                create_order(symbol, session, "SHORT", closing_price, cash, marzha, take, stop)
                 if closing_price <= lower_band * 0.985:
                     print("Buy Signal detected on false breakout")
                     create_order(symbol, session, "LONG", closing_price, cash, marzha, take, stop)
