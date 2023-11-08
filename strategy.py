@@ -121,10 +121,10 @@ def handle_message(message):
         lower_band, sma, upper_band = calculate_bollinger_bands(list(closing_prices), multiplier)
         if lower_band is not None and upper_band is not None:
             if not in_position:
-                if closing_price <= lower_band * 0.985:
+                if closing_price <= lower_band * 0.994:
                     print("Buy Signal detected on false breakout")
                     create_order(symbol, session, "LONG", closing_price, cash, marzha, take, stop)
-                elif closing_price >= upper_band * 1.015:
+                elif closing_price >= upper_band * 1.006:
                     print("Sell Signal detected on false breakout")
                     create_order(symbol, session, "SHORT", closing_price, cash, marzha, take, stop)
                 else:
@@ -146,7 +146,7 @@ def check_open_positions(symbol, session):
         print(f"Ошибка при проверке открытых позиций: {e}")
         return None
 
-ws.kline_stream(interval='30', symbol=symbol, callback=lambda msg: run_in_thread(handle_message, msg))
+ws.kline_stream(interval='5', symbol=symbol, callback=lambda msg: run_in_thread(handle_message, msg))
 
 try:
     while True:
