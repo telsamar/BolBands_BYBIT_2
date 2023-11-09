@@ -1,82 +1,43 @@
-from bybit_keys import bybit_api_key, bybit_secret_key
-from pybit.unified_trading import WebSocket
-from pybit.unified_trading import HTTP
-from time import sleep
+import threading
+from pybit.unified_trading import WebSocket, HTTP
 import numpy as np
 from collections import deque
-import json
-import time
-from datetime import datetime, timedelta
 from decimal import Decimal, getcontext
-import threading
-import asyncio
+from time import sleep
+import json
 
-class WebSocketManager:
-    def __init__(self, api_key, api_secret, symbol, testnet=True):
-        self.api_key = api_key
-        self.api_secret = api_secret
-        self.symbol = symbol
-        self.testnet = testnet
-        self.ws = None  # WebSocket connection will be stored here
+with open('settings.json', 'r') as f:
+    settings = json.load(f)
 
-    async def connect(self):
-        """Асинхронное подключение к WebSocket."""
-        self.ws = WebSocket(testnet=self.testnet, channel_type="linear", api_key=self.api_key, api_secret=self.api_secret)
-        await self.ws.connect()
+from bybit_keys import bybit_api_key, bybit_secret_key
 
-    async def subscribe_to_kline(self, interval, trade_manager):
-        """Асинхронная подписка на поток Kline."""
-        await self.ws.kline_stream(interval=interval, symbol=self.symbol, callback=lambda msg: asyncio.create_task(trade_manager.analyze_market_data(msg)))
-
-    async def close(self):
-        """Асинхронное закрытие соединения."""
-        await self.ws.close()
-
-    async def subscribe_to_kline_multiple(self, symbols, interval, trade_managers):
-        """Асинхронная подписка на потоки Kline для нескольких символов."""
-        for symbol in symbols:
-            await self.ws.kline_stream(
-                interval=interval, 
-                symbol=symbol, 
-                callback=lambda msg, symbol=symbol: asyncio.create_task(trade_managers[symbol].analyze_market_data(msg))
-            )
-
-def dynamic_round(number, step_size):
-    getcontext().prec = 28
-    number = Decimal(str(number))
-    step_size = Decimal(str(step_size))
-    decimal_places = len(str(step_size).split(".")[1]) if "." in str(step_size) else 0
-    rounded_number = (number / step_size).quantize(1) * step_size
-    return round(rounded_number, decimal_places)
-
-class TradeManager:
-    def __init__(self, api_key, api_secret, symbol, settings):
-        self.api_key = api_key
-        self.api_secret = api_secret
+class TradingBot:
+    def __init__(self, symbol, settings):
         self.symbol = symbol
         self.settings = settings
+        self.ws = None
         self.session = None
-        self.in_position = False
-        self.closing_prices = deque(maxlen=settings["period"])
-        self.period = settings['period']
-        self.multiplier = settings['multiplier']
-        self.cash = settings['сумма']
-        self.marzha = settings['маржа']
-        self.take = settings['тейк']
-        self.stop = settings['стоп']
+        self.period = 20
+        self.multiplier = 2
         self.closing_prices = deque(maxlen=self.period)
+        self.in_position = False
+        self.thread = None
+        self.api_key = bybit_api_key
+        self.api_secret = bybit_secret_key
 
-    def calculate_bollinger_bands(self, prices):
-        if len(prices) < self.period:
-            return None, None, None
-        average = np.mean(prices)
-        std_dev = np.std(prices)
-        upper_band = average + (std_dev * self.multiplier)
-        lower_band = average - (std_dev * self.multiplier)
-        return lower_band, average, upper_band
+    def start(self):
+        self.session = HTTP(testnet=False, api_key=self.api_key, api_secret=self.api_secret)
+        self.ws = WebSocket(testnet=True, channel_type="linear", api_key=self.api_key, api_secret=self.api_secret)
+        self.thread = threading.Thread(target=self.run)
+        self.thread.start()
 
-    async def analyze_market_data(self, message):
-        # Обработка сообщений от вебсокета
+    def run(self):
+        self.ws.kline_stream(interval='5', symbol=self.symbol, callback=self.handle_message)
+        
+        while True:
+            sleep(1)
+
+    def handle_message(self, message):
         if 'data' in message and len(message['data']) > 0:
             candle = message['data'][0]
             closing_price = float(candle['close'])
@@ -84,106 +45,122 @@ class TradeManager:
             if candle['confirm'] == True:
                 self.closing_prices.append(closing_price)
 
-            lower_band, sma, upper_band = self.calculate_bollinger_bands(list(self.closing_prices))
+            lower_band, sma, upper_band = self.calculate_bollinger_bands(list(self.closing_prices), self.multiplier)
             if lower_band is not None and upper_band is not None:
                 if not self.in_position:
                     if closing_price <= lower_band * 0.994:
-                        print("Buy Signal detected on false breakout")
-                        await self.execute_trade("LONG", closing_price)
+                        print(f"{self.symbol}: Buy Signal detected on false breakout")
+                        self.create_order("LONG", closing_price)
                     elif closing_price >= upper_band * 1.006:
-                        print("Sell Signal detected on false breakout")
-                        await self.execute_trade("SHORT", closing_price)
+                        print(f"{self.symbol}: Sell Signal detected on false breakout")
+                        self.create_order("SHORT", closing_price)
                     else:
-                        print("Условия не выполняются")
+                        print(f"{self.symbol}: No trade conditions met.")
                 else:
-                    self.in_position = await self.check_open_positions()
+                    self.in_position = self.check_open_positions()
 
-    async def execute_trade(self, side, open_price):
-        self.in_position = True
-        dataz = await self.session.get_instruments_info(category="linear", symbol=self.symbol)
-        ord_step = dataz['result']['list'][0]['priceFilter']['tickSize']
-        ord_step_num = float(ord_step)
+    def calculate_bollinger_bands(self, prices, multiplier):
+        if len(prices) < self.period:
+            return None, None, None
+        average = np.mean(prices)
+        std_dev = np.std(prices)
+        upper_band = average + (std_dev * multiplier)
+        lower_band = average - (std_dev * multiplier)
+        return lower_band, average, upper_band
 
-        qty_step = dataz['result']['list'][0]['lotSizeFilter']['qtyStep']
-        qty_step_num = float(qty_step)
+    def dynamic_round(self, number, step_size):
+        getcontext().prec = 28
+        number = Decimal(str(number))
+        step_size = Decimal(str(step_size))
+        decimal_places = len(str(step_size).split(".")[1]) if "." in str(step_size) else 0
+        rounded_number = (number / step_size).quantize(1) * step_size
+        return round(rounded_number, decimal_places)
 
-        smartQuantity = self.cash * self.marzha / open_price
-        rounded_smartQuantity = dynamic_round(smartQuantity, qty_step_num)
+    def create_order(self, side, open_price):
+        cash = float(self.settings["сумма"])
+        marzha = float(self.settings["маржа"])
+        take = float(self.settings["тейк"])
+        stop = float(self.settings["стоп"])
+
+        instrument_info = self.session.get_instruments_info(category="linear", symbol=self.symbol)
+        ord_step = float(instrument_info['result']['list'][0]['priceFilter']['tickSize'])
+        qty_step = float(instrument_info['result']['list'][0]['lotSizeFilter']['qtyStep'])
+
+        smart_quantity = cash * marzha / open_price
+        rounded_smart_quantity = self.dynamic_round(smart_quantity, qty_step)
+
         try:
-            if side == 'LONG':
-                result = await self.session.place_order(category='linear', symbol=self.symbol, side='Buy', orderType='Market', isLeverage=1, qty=rounded_smartQuantity)  # Исправлено здесь
-                print('bybit. Открыли LONG')
-            elif side == 'SHORT':
-                result = await self.session.place_order(category='linear', symbol=self.symbol, side='Sell', orderType='Market', isLeverage=1, qty=rounded_smartQuantity)  # Исправлено здесь
-                print('bybit. Открыли SHORT')
-            else:
-                print("bybit. Куда растем?")
+            result = self.session.place_active_order(
+                symbol=self.symbol,
+                side='Buy' if side == 'LONG' else 'Sell',
+                order_type='Market',
+                qty=rounded_smart_quantity,
+                time_in_force='GoodTillCancel',
+                reduce_only=False,
+                close_on_trigger=False
+            )
+            print(f"{self.symbol}: Opened {side} position")
         except Exception as e:
-            print(e)
+            print(f"{self.symbol}: Error placing order - {e}")
+            return
 
-        datay = await self.session.get_order_history(category="linear", orderId=result.get('result', {}).get('orderId', None))  # Добавлено await и self здесь
-        new_price = float(datay.get('result', {}).get('list', [])[0].get('avgPrice', 'Не найдено'))
-        print('bybit. Средняя цена открытой рыночной сделки:', new_price)
+        if result and result.get('ret_code') == 0:
+            order_id = result['result']['order_id']
+            self.set_trading_stop(order_id, open_price, side)
 
-        take_price_ch_short = dynamic_round((new_price - (self.take * new_price) / (self.marzha * 100)), ord_step_num)
-        stop_price_ch_short = dynamic_round((new_price + (self.stop * new_price) / (self.marzha * 100)), ord_step_num)
-        take_price_ch_long = dynamic_round((new_price + (self.take * new_price) / (self.marzha * 100)), ord_step_num)
-        stop_price_ch_long = dynamic_round((new_price - (self.stop * new_price) / (self.marzha * 100)), ord_step_num)
+    def set_trading_stop(self, order_id, open_price, side):
+        take = float(self.settings["тейк"])
+        stop = float(self.settings["стоп"])
+        marzha = float(self.settings["маржа"])
+
+        new_price = open_price
+        
+        if side == 'LONG':
+            take_price = new_price + (new_price * take / (100 * marzha))
+            stop_price = new_price - (new_price * stop / (100 * marzha))
+        else:
+            take_price = new_price - (new_price * take / (100 * marzha))
+            stop_price = new_price + (new_price * stop / (100 * marzha))
+        
+        take_price = self.dynamic_round(take_price, ord_step)
+        stop_price = self.dynamic_round(stop_price, ord_step)
 
         try:
-            if side == 'LONG':
-                sl_tp_order = await self.session.set_trading_stop(category='linear', symbol=self.symbol, takeProfit=str(take_price_ch_long), tpTriggerBy="MarkPrice", tpslMode="Partial", tpOrderType="Limit", tpSize=str(rounded_smartQuantity), tpLimitPrice=str(take_price_ch_long),
-                    stopLoss=str(stop_price_ch_long), slTriggerBy="MarkPrice", slOrderType="Limit", slSize=str(rounded_smartQuantity), slLimitPrice=str(stop_price_ch_long))  # Исправлено здесь
-                print("bybit. TP и SL успешно открыты в long")
-            elif side == 'SHORT':
-                sl_tp_order = await self.session.set_trading_stop(category='linear', symbol=self.symbol, takeProfit=str(take_price_ch_short), tpTriggerBy="MarkPrice", tpslMode="Partial", tpOrderType="Limit", tpSize=str(rounded_smartQuantity), tpLimitPrice=str(take_price_ch_short),
-                    stopLoss=str(stop_price_ch_short), slTriggerBy="MarkPrice", slOrderType="Limit", slSize=str(rounded_smartQuantity), slLimitPrice=str(stop_price_ch_short))  # Исправлено здесь
-                print("bybit. TP и SL успешно открыты в short")
-            else:
-                print("Где стоп?")
+            self.session.set_trading_stop(
+                symbol=self.symbol,
+                side='Buy' if side == 'LONG' else 'Sell',
+                take_profit=take_price,
+                stop_loss=stop_price
+            )
+            print(f"{self.symbol}: Set TP at {take_price} and SL at {stop_price}")
         except Exception as e:
-            print(f"bybit. Не удалось создать TP и SL: {e}")
+            print(f"{self.symbol}: Error setting TP/SL - {e}")
 
-    async def check_open_positions(self):
+    def check_open_positions(self):
         try:
-            response = await self.session.get_positions(category='linear', symbol=self.symbol)
-            if response['retCode'] == 0 and response['result']:
+            response = self.session.get_positions(category='linear', symbol=self.symbol)
+            if response['ret_code'] == 0 and response['result']:
                 if any(float(position['size']) > 0 for position in response['result']['list']):
-                    print(f"У вас есть открытая позиция на {symbol}.")
+                    print(f"{self.symbol}: There is an open position.")
                     return True
                 else:
-                    print("Активных позиций нет.")
+                    print(f"{self.symbol}: No active positions.")
                     return False
         except Exception as e:
-            print(f"Ошибка при проверке открытых позиций: {e}")
+            print(f"{self.symbol}: Error checking open positions - {e}")
             return None
 
-    async def setup(self):
-        """Асинхронная настройка сессии."""
-        self.session = HTTP(testnet=False, api_key=self.api_key, api_secret=self.api_secret)
+    def stop(self):
+        if self.ws:
+            self.ws.close()
+        if self.thread.is_alive():
+            self.thread.join()
 
-async def main():
-    # Загрузка настроек из файла
-    with open('settings.json', 'r') as f:
-        settings = json.load(f)
+symbols = ['SOLUSDT', 'ADAUSDT', 'XRPUSDT']
+bots = [TradingBot(symbol, settings) for symbol in symbols]
 
-    # Загрузка настроек и инициализация классов
-    symbols = ['SOLUSDT', 'BTCUSDT', 'ETHUSDT']  # Пример списка монет
-    trade_managers = {symbol: TradeManager(bybit_api_key, bybit_secret_key, symbol, settings) for symbol in symbols}
-    ws_manager = WebSocketManager(bybit_api_key, bybit_secret_key)
+for bot in bots:
+    bot.start()
 
-    # Настройка соединения и подписка на потоки данных
-    for symbol, trade_manager in trade_managers.items():
-        await trade_manager.setup()
-
-    await ws_manager.connect()
-    await ws_manager.subscribe_to_kline_multiple(symbols, '5', trade_managers)
-
-    try:
-        while True:
-            await asyncio.sleep(1)
-    except KeyboardInterrupt:
-        await ws_manager.close()
-
-# Запуск основного цикла асинхронно
-asyncio.run(main())
+for bot in bots:
+    bot.stop()
