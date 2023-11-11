@@ -122,10 +122,10 @@ class CoinTrader:
             lower_band, sma, upper_band = self.calculate_bollinger_bands(list(self.closing_prices))
             if lower_band is not None and upper_band is not None:
                 if not self.in_position:
-                    if closing_price <= lower_band * 0.995:
+                    if closing_price <= lower_band * 0.992:
                         logging.info(f"{self.symbol} Buy Signal detected")
                         self.create_order("LONG", closing_price)
-                    elif closing_price >= upper_band * 1.005:
+                    elif closing_price >= upper_band * 1.008:
                         logging.info(f"{self.symbol} Sell Signal detected on false breakout")
                         self.create_order("SHORT", closing_price)
                     else:
@@ -162,8 +162,21 @@ class CoinTrader:
         thread.start()
         return thread
 
-with open('settings.json', 'r') as f:
-    settings = json.load(f)
+def run_trader(symbol, settings):
+    trader = CoinTrader(symbol, settings)
+    trader.start_trading()
 
-trader = CoinTrader('XRPUSDT', settings)
-trader.start_trading()
+if __name__ == "__main__":
+    with open('settings.json', 'r') as f:
+        settings = json.load(f)
+
+    symbols = ['XRPUSDT', 'LINKUSDT', 'DOGEUSDT']
+
+    threads = []
+    for symbol in symbols:
+        thread = threading.Thread(target=run_trader, args=(symbol, settings))
+        thread.start()
+        threads.append(thread)
+
+    for thread in threads:
+        thread.join()
