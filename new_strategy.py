@@ -59,23 +59,24 @@ class CoinTrader:
 
         qty_step = dataz['result']['list'][0]['lotSizeFilter']['qtyStep']
         qty_step_num = float(qty_step)
-        
+
         def dynamic_round(number, step_size):
-            logging.info("%s step_size: %s", self.symbol, step_size)
-            logging.info("%s number: %s", self.symbol, number)
-            
+            logging.info("number: %s", number)
+            logging.info("step_size: %s", step_size)
+
             getcontext().prec = 10
             number = Decimal(str(number))
             step_size = Decimal(str(step_size))
             decimal_places = len(str(step_size).split(".")[1]) if "." in str(step_size) else 0
+            logging.info("decimal_places: %s", decimal_places)
 
             rounded_number = (number // step_size) * step_size
-
-            logging.info("%s rounded_number: %s", self.symbol, rounded_number)
-            return rounded_number
+            logging.info("rounded_number: %s", rounded_number)
+            return rounded_number.quantize(Decimal(10) ** -decimal_places)
 
         smartQuontity = self.cash * self.marzha / open_price
         rounded_smartQuontity = dynamic_round(smartQuontity, qty_step_num)
+
         try:
             if side == 'LONG':
                 result = self.session.place_order(category = 'linear', symbol = self.symbol, side = 'Buy', orderType = 'Market', isLeverage = 1, qty = rounded_smartQuontity)
@@ -122,10 +123,10 @@ class CoinTrader:
             lower_band, sma, upper_band = self.calculate_bollinger_bands(list(self.closing_prices))
             if lower_band is not None and upper_band is not None:
                 if not self.in_position:
-                    if closing_price <= lower_band * 0.98:
+                    if closing_price <= lower_band * 0.975:
                         logging.info(f"{self.symbol} Сигнал на покупку")
                         self.create_order("LONG", closing_price)
-                    elif closing_price >= upper_band * 1.02:
+                    elif closing_price >= upper_band * 1.025:
                         logging.info(f"{self.symbol} Сигнал на продажу")
                         self.create_order("SHORT", closing_price)
                     else:
