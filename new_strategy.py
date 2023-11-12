@@ -100,11 +100,11 @@ class CoinTrader:
         try:
             if side == 'LONG':
                 sl_tp_order = self.session.set_trading_stop(category = 'linear', symbol = self.symbol, takeProfit=str(take_price_ch_long), tpTriggerBy="MarkPrice", tpslMode="Partial", tpOrderType="Limit", tpSize=str(rounded_smartQuontity), tpLimitPrice = str(take_price_ch_long),
-                    stopLoss=str(stop_price_ch_long), slTriggerB="MarkPrice", slOrderType="Limit", slSize=str(rounded_smartQuontity), slLimitPrice = str(stop_price_ch_long))
+                    stopLoss=str(stop_price_ch_long), slTriggerB="LastPrice", slOrderType="Limit", slSize=str(rounded_smartQuontity), slLimitPrice = str(stop_price_ch_long))
                 logging.info(f"{self.symbol}. TP и SL успешно открыты в long")
             elif side == 'SHORT':
                 sl_tp_order = self.session.set_trading_stop(category = 'linear', symbol = self.symbol, takeProfit=str(take_price_ch_short), tpTriggerBy="MarkPrice", tpslMode="Partial", tpOrderType="Limit", tpSize=str(rounded_smartQuontity), tpLimitPrice = str(take_price_ch_short),
-                    stopLoss=str(stop_price_ch_short), slTriggerBy="MarkPrice", slOrderType="Limit", slSize=str(rounded_smartQuontity), slLimitPrice = str(stop_price_ch_short))
+                    stopLoss=str(stop_price_ch_short), slTriggerBy="LastPrice", slOrderType="Limit", slSize=str(rounded_smartQuontity), slLimitPrice = str(stop_price_ch_short))
                 logging.info(f"{self.symbol}. TP и SL успешно открыты в short")
             else:
                 logging.error("Где стоп?")
@@ -122,14 +122,14 @@ class CoinTrader:
             lower_band, sma, upper_band = self.calculate_bollinger_bands(list(self.closing_prices))
             if lower_band is not None and upper_band is not None:
                 if not self.in_position:
-                    if closing_price <= lower_band * 0.992:
-                        logging.info(f"{self.symbol} Buy Signal detected")
+                    if closing_price <= lower_band * 0.98:
+                        logging.info(f"{self.symbol} Сигнал на покупку")
                         self.create_order("LONG", closing_price)
-                    elif closing_price >= upper_band * 1.008:
-                        logging.info(f"{self.symbol} Sell Signal detected on false breakout")
+                    elif closing_price >= upper_band * 1.02:
+                        logging.info(f"{self.symbol} Сигнал на продажу")
                         self.create_order("SHORT", closing_price)
                     else:
-                        logging.info(f"{self.symbol} Условия не выполняются")
+                        logging.debug(f"{self.symbol} Условия не выполняются")
                 else:
                     self.in_position = self.check_open_positions()
 
@@ -170,7 +170,7 @@ if __name__ == "__main__":
     with open('settings.json', 'r') as f:
         settings = json.load(f)
 
-    symbols = ['XRPUSDT', 'LINKUSDT', 'DOGEUSDT']
+    symbols = ['XRPUSDT', 'LINKUSDT', 'DOGEUSDT', 'GASUSDT', 'AVAXUSDT', 'ZRXUSDT', 'RUNEUSDT', 'ORDIUSDT', 'TRBUSDT', 'MATICUSDT', 'APTUSDT', 'ADAUSDT']
 
     threads = []
     for symbol in symbols:
