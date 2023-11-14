@@ -79,10 +79,10 @@ class CoinTrader:
 
         try:
             if side == 'LONG':
-                result = self.session.place_order(category = 'linear', symbol = self.symbol, side = 'Buy', orderType = 'Market', isLeverage = 1, qty = rounded_smartQuontity)
+                result = self.session.place_order(category = 'linear', symbol = self.symbol, side = 'Buy', orderType = 'Market', isLeverage = 1, qty = rounded_smartQuontity, positionIdx = 1)
                 logging.info(f'{self.symbol}. Открыли LONG')
             elif side == 'SHORT':
-                result = self.session.place_order(category = 'linear', symbol = self.symbol, side = 'Sell', orderType = 'Market', isLeverage = 1, qty = rounded_smartQuontity)
+                result = self.session.place_order(category = 'linear', symbol = self.symbol, side = 'Sell', orderType = 'Market', isLeverage = 1, qty = rounded_smartQuontity, positionIdx = 2)
                 logging.info(f'{self.symbol}. Открыли SHORT')
             else:
                 logging.info(f"{self.symbol}. Куда растем?")
@@ -101,11 +101,11 @@ class CoinTrader:
         try:
             if side == 'LONG':
                 sl_tp_order = self.session.set_trading_stop(category = 'linear', symbol = self.symbol, takeProfit=str(take_price_ch_long), tpTriggerBy="MarkPrice", tpslMode="Partial", tpOrderType="Limit", tpSize=str(rounded_smartQuontity), tpLimitPrice = str(take_price_ch_long),
-                    stopLoss=str(stop_price_ch_long), slTriggerB="LastPrice", slOrderType="Limit", slSize=str(rounded_smartQuontity), slLimitPrice = str(stop_price_ch_long))
+                    stopLoss=str(stop_price_ch_long), slTriggerB="LastPrice", slOrderType="Limit", slSize=str(rounded_smartQuontity), slLimitPrice = str(stop_price_ch_long), positionIdx = 1)
                 logging.info(f"{self.symbol}. TP и SL успешно открыты в long")
             elif side == 'SHORT':
                 sl_tp_order = self.session.set_trading_stop(category = 'linear', symbol = self.symbol, takeProfit=str(take_price_ch_short), tpTriggerBy="MarkPrice", tpslMode="Partial", tpOrderType="Limit", tpSize=str(rounded_smartQuontity), tpLimitPrice = str(take_price_ch_short),
-                    stopLoss=str(stop_price_ch_short), slTriggerBy="LastPrice", slOrderType="Limit", slSize=str(rounded_smartQuontity), slLimitPrice = str(stop_price_ch_short))
+                    stopLoss=str(stop_price_ch_short), slTriggerBy="LastPrice", slOrderType="Limit", slSize=str(rounded_smartQuontity), slLimitPrice = str(stop_price_ch_short), positionIdx = 2)
                 logging.info(f"{self.symbol}. TP и SL успешно открыты в short")
             else:
                 logging.error("Где стоп?")
@@ -122,6 +122,7 @@ class CoinTrader:
 
             lower_band, sma, upper_band = self.calculate_bollinger_bands(list(self.closing_prices))
             if lower_band is not None and upper_band is not None:
+                logging.info(f"{self.symbol} lower {lower_band} upper {upper_band}")
                 if not self.in_position:
                     if closing_price <= lower_band * 0.97:
                         logging.info(f"{self.symbol} Сигнал на покупку")
@@ -139,10 +140,8 @@ class CoinTrader:
             response = self.session.get_positions(category='linear', symbol=self.symbol)
             if response['retCode'] == 0 and response['result']:
                 if any(float(position['size']) > 0 for position in response['result']['list']):
-                    logging.info(f"У вас есть открытая позиция на {self.symbol}.")
                     return True
                 else:
-                    logging.info(f"{self.symbol} Активных позиций нет")
                     return False
         except Exception as e:
             logging.error(f"Ошибка при проверке открытых позиций: {e}")
