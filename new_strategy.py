@@ -123,10 +123,10 @@ class CoinTrader:
             lower_band, sma, upper_band = self.calculate_bollinger_bands(list(self.closing_prices))
             if lower_band is not None and upper_band is not None:
                 if not self.in_position:
-                    if closing_price <= lower_band * 0.96:
+                    if closing_price <= lower_band * 0.97:
                         logging.info(f"{self.symbol} Сигнал на покупку")
                         self.create_order("LONG", closing_price)
-                    elif closing_price >= upper_band * 1.04:
+                    elif closing_price >= upper_band * 1.03:
                         logging.info(f"{self.symbol} Сигнал на продажу")
                         self.create_order("SHORT", closing_price)
                     else:
