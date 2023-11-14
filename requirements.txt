@@ -29,7 +29,6 @@ pytz==2023.3.post1
 regex==2023.10.3
 requests==2.31.0
 six==1.16.0
-TA-Lib==0.4.28
 typing_extensions==4.7.1
 tzlocal==5.1
 ujson==5.8.0
