@@ -79,10 +79,10 @@ class CoinTrader:
 
         try:
             if side == 'LONG':
-                result = self.session.place_order(category = 'linear', symbol = self.symbol, side = 'Buy', orderType = 'Market', isLeverage = 1, qty = rounded_smartQuontity, positionIdx = 1)
+                result = self.session.place_order(category = 'linear', symbol = self.symbol, side = 'Buy', orderType = 'Market', isLeverage = 1, qty = rounded_smartQuontity)
                 logging.info(f'{self.symbol}. Открыли LONG')
             elif side == 'SHORT':
-                result = self.session.place_order(category = 'linear', symbol = self.symbol, side = 'Sell', orderType = 'Market', isLeverage = 1, qty = rounded_smartQuontity, positionIdx = 2)
+                result = self.session.place_order(category = 'linear', symbol = self.symbol, side = 'Sell', orderType = 'Market', isLeverage = 1, qty = rounded_smartQuontity)
                 logging.info(f'{self.symbol}. Открыли SHORT')
             else:
                 logging.info(f"{self.symbol}. Куда растем?")
