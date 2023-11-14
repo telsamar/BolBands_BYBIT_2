@@ -32,7 +32,7 @@ class CoinTrader:
         try:
             self.session.set_leverage(category='linear', symbol=self.symbol, buyLeverage=str(self.marzha), sellLeverage=str(self.marzha))
         except Exception as e:
-            pass
+            logging.debug("Произошла ошибка в установке маржи: %s", e)
 
     def _get_wallet_balance(self):
         try:
@@ -78,16 +78,14 @@ class CoinTrader:
         rounded_smartQuontity = dynamic_round(smartQuontity, qty_step_num)
 
         try:
-            if side == 'LONG':
-                result = self.session.place_order(category = 'linear', symbol = self.symbol, side = 'Buy', orderType = 'Market', isLeverage = 1, qty = rounded_smartQuontity)
-                logging.info(f'{self.symbol}. Открыли LONG')
-            elif side == 'SHORT':
-                result = self.session.place_order(category = 'linear', symbol = self.symbol, side = 'Sell', orderType = 'Market', isLeverage = 1, qty = rounded_smartQuontity)
-                logging.info(f'{self.symbol}. Открыли SHORT')
-            else:
-                logging.info(f"{self.symbol}. Куда растем?")
+            if by_res['status']['bybit'] == 'LONG':
+                result = session.place_order(category = 'linear', symbol = by_res['symbol'], side = 'Buy', orderType = 'Market', isLeverage = 1, qty = rounded_smartQuontity, positionIdx = 1)
+                logging.info('bybit. Открыли LONG')
+            elif by_res['status']['bybit'] == 'SHORT':
+                result = session.place_order(category = 'linear', symbol = by_res['symbol'], side = 'Sell', orderType = 'Market', isLeverage = 1, qty = rounded_smartQuontity, positionIdx = 2)
+                logging.info('bybit. Открыли SHORT')
         except Exception as e:
-            logging.info(e)
+            logging.error("Произошла ошибка в выставлении заявки на покупку: %s", e)
 
         datay = self.session.get_order_history(category="linear", orderId = result.get('result', {}).get('orderId', None))
         new_price = float(datay.get('result', {}).get('list', [])[0].get('avgPrice', 'Не найдено'))
@@ -99,18 +97,16 @@ class CoinTrader:
         stop_price_ch_long = dynamic_round((new_price - (self.stop * new_price) / (self.marzha * 100)), ord_step_num)
 
         try:
-            if side == 'LONG':
-                sl_tp_order = self.session.set_trading_stop(category = 'linear', symbol = self.symbol, takeProfit=str(take_price_ch_long), tpTriggerBy="MarkPrice", tpslMode="Partial", tpOrderType="Limit", tpSize=str(rounded_smartQuontity), tpLimitPrice = str(take_price_ch_long),
-                    stopLoss=str(stop_price_ch_long), slTriggerB="LastPrice", slOrderType="Limit", slSize=str(rounded_smartQuontity), slLimitPrice = str(stop_price_ch_long), positionIdx = 1)
-                logging.info(f"{self.symbol}. TP и SL успешно открыты в long")
-            elif side == 'SHORT':
-                sl_tp_order = self.session.set_trading_stop(category = 'linear', symbol = self.symbol, takeProfit=str(take_price_ch_short), tpTriggerBy="MarkPrice", tpslMode="Partial", tpOrderType="Limit", tpSize=str(rounded_smartQuontity), tpLimitPrice = str(take_price_ch_short),
-                    stopLoss=str(stop_price_ch_short), slTriggerBy="LastPrice", slOrderType="Limit", slSize=str(rounded_smartQuontity), slLimitPrice = str(stop_price_ch_short), positionIdx = 2)
-                logging.info(f"{self.symbol}. TP и SL успешно открыты в short")
-            else:
-                logging.error("Где стоп?")
+            if by_res['status']['bybit'] == 'LONG':
+                tp_order = session.set_trading_stop(category = 'linear', symbol = by_res['symbol'], takeProfit=str(take_price_ch_long), tpTriggerBy="MarkPrice", tpslMode="Partial", tpOrderType="Limit", tpSize=str(rounded_smartQuontity), tpLimitPrice = str(take_price_ch_long))
+                sl_order = session.set_trading_stop(category = 'linear', symbol = by_res['symbol'], stopLoss=str(stop_price_ch_long), slTriggerBy="LastPrice", tpslMode="Partial", slOrderType="Limit", slSize=str(rounded_smartQuontity), slLimitPrice = str(stop_price_ch_long))
+                logging.info("%s. TP и SL успешно открыты в long", by_res['symbol'])
+            elif by_res['status']['bybit'] == 'SHORT':
+                tp_order = session.set_trading_stop(category = 'linear', symbol = by_res['symbol'], takeProfit=str(take_price_ch_short), tpTriggerBy="MarkPrice", tpslMode="Partial", tpOrderType="Limit", tpSize=str(rounded_smartQuontity), tpLimitPrice = str(take_price_ch_short))
+                sl_order = session.set_trading_stop(category = 'linear', symbol = by_res['symbol'], stopLoss=str(stop_price_ch_short), slTriggerBy="LastPrice", tpslMode="Partial", slOrderType="Limit", slSize=str(rounded_smartQuontity), slLimitPrice = str(stop_price_ch_short))           
+                logging.info("%s. TP и SL успешно открыты в short", by_res['symbol'])
         except Exception as e:
-            logging.info(f"{self.symbol}. Не удалось создать TP и SL: {e}")
+            logging.error(f"{by_res['symbol']}. Не удалось создать TP и SL: {e}")
 
     def handle_message(self, message):
         if 'data' in message and len(message['data']) > 0:
