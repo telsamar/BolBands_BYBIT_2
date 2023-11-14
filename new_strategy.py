@@ -7,6 +7,8 @@ import json
 from decimal import Decimal, getcontext
 import threading
 import logging
+import talib
+
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s', filename='coin_trader.log', filemode='w')
 
 class CoinTrader:
@@ -45,11 +47,9 @@ class CoinTrader:
     def calculate_bollinger_bands(self, prices):
         if len(prices) < self.period:
             return None, None, None
-        average = np.mean(prices)
-        std_dev = np.std(prices)
-        upper_band = average + (std_dev * self.multiplier)
-        lower_band = average - (std_dev * self.multiplier)
-        return lower_band, average, upper_band
+        prices_array = np.array(prices)
+        upper_band, middle_band, lower_band = talib.BBANDS(prices_array, timeperiod=self.period, nbdevup=self.multiplier, nbdevdn=self.multiplier, matype=0)
+        return lower_band, middle_band, upper_band
 
     def create_order(self, side, open_price):
         self.in_position = True
@@ -166,7 +166,7 @@ if __name__ == "__main__":
     with open('settings.json', 'r') as f:
         settings = json.load(f)
 
-    symbols = ['XRPUSDT', 'LINKUSDT', 'DOGEUSDT', 'GASUSDT', 'SOLUSDT', 'TRBUSDT', 'ADAUSDT', 'DOTUSDT', 'BNTUSDT']
+    symbols = ['XRPUSDT', 'GASUSDT', 'SOLUSDT', 'TRBUSDT', 'DOTUSDT']
 
     threads = []
     for symbol in symbols:
