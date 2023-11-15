@@ -62,28 +62,28 @@ class CoinTrader:
         qty_step_num = float(qty_step)
 
         def dynamic_round(number, step_size):
-            logging.info("number: %s", number)
-            logging.info("step_size: %s", step_size)
+            # logging.info("number: %s", number)
+            # logging.info("step_size: %s", step_size)
 
             getcontext().prec = 10
             number = Decimal(str(number))
             step_size = Decimal(str(step_size))
             decimal_places = len(str(step_size).split(".")[1]) if "." in str(step_size) else 0
-            logging.info("decimal_places: %s", decimal_places)
+            # logging.info("decimal_places: %s", decimal_places)
 
             rounded_number = (number // step_size) * step_size
-            logging.info("rounded_number: %s", rounded_number)
+            # logging.info("rounded_number: %s", rounded_number)
             return rounded_number.quantize(Decimal(10) ** -decimal_places)
 
         smartQuontity = self.cash * self.marzha / open_price
         rounded_smartQuontity = dynamic_round(smartQuontity, qty_step_num)
 
         try:
-            if by_res['status']['bybit'] == 'LONG':
-                result = session.place_order(category = 'linear', symbol = by_res['symbol'], side = 'Buy', orderType = 'Market', isLeverage = 1, qty = rounded_smartQuontity, positionIdx = 1)
+            if side == 'LONG':
+                result = self.session.place_order(category = 'linear', symbol = self.symbol, side = 'Buy', orderType = 'Market', isLeverage = 1, qty = rounded_smartQuontity, positionIdx = 1)
                 logging.info('bybit. Открыли LONG')
-            elif by_res['status']['bybit'] == 'SHORT':
-                result = session.place_order(category = 'linear', symbol = by_res['symbol'], side = 'Sell', orderType = 'Market', isLeverage = 1, qty = rounded_smartQuontity, positionIdx = 2)
+            elif side == 'SHORT':
+                result = self.session.place_order(category = 'linear', symbol = self.symbol, side = 'Sell', orderType = 'Market', isLeverage = 1, qty = rounded_smartQuontity, positionIdx = 2)
                 logging.info('bybit. Открыли SHORT')
         except Exception as e:
             logging.error("Произошла ошибка в выставлении заявки на покупку: %s", e)
@@ -92,22 +92,26 @@ class CoinTrader:
         new_price = float(datay.get('result', {}).get('list', [])[0].get('avgPrice', 'Не найдено'))
         logging.info(f'{self.symbol}. Средняя цена открытой рыночной сделки: {new_price}')
 
-        take_price_ch_short = dynamic_round((new_price - (self.take * new_price) / (self.marzha * 100)), ord_step_num)
-        stop_price_ch_short = dynamic_round((new_price + (self.stop * new_price) / (self.marzha * 100)), ord_step_num)
-        take_price_ch_long = dynamic_round((new_price + (self.take * new_price) / (self.marzha * 100)), ord_step_num)
-        stop_price_ch_long = dynamic_round((new_price - (self.stop * new_price) / (self.marzha * 100)), ord_step_num)
+        # take_price_ch_short = dynamic_round((new_price - (self.take * new_price) / (self.marzha * 100)), ord_step_num)
+        # stop_price_ch_short = dynamic_round((new_price + (self.stop * new_price) / (self.marzha * 100)), ord_step_num)
+        # take_price_ch_long = dynamic_round((new_price + (self.take * new_price) / (self.marzha * 100)), ord_step_num)
+        # stop_price_ch_long = dynamic_round((new_price - (self.stop * new_price) / (self.marzha * 100)), ord_step_num)
 
         try:
-            if by_res['status']['bybit'] == 'LONG':
-                tp_order = session.set_trading_stop(category = 'linear', symbol = by_res['symbol'], takeProfit=str(take_price_ch_long), tpTriggerBy="MarkPrice", tpslMode="Partial", tpOrderType="Limit", tpSize=str(rounded_smartQuontity), tpLimitPrice = str(take_price_ch_long))
-                sl_order = session.set_trading_stop(category = 'linear', symbol = by_res['symbol'], stopLoss=str(stop_price_ch_long), slTriggerBy="LastPrice", tpslMode="Partial", slOrderType="Limit", slSize=str(rounded_smartQuontity), slLimitPrice = str(stop_price_ch_long))
-                logging.info("%s. TP и SL успешно открыты в long", by_res['symbol'])
-            elif by_res['status']['bybit'] == 'SHORT':
-                tp_order = session.set_trading_stop(category = 'linear', symbol = by_res['symbol'], takeProfit=str(take_price_ch_short), tpTriggerBy="MarkPrice", tpslMode="Partial", tpOrderType="Limit", tpSize=str(rounded_smartQuontity), tpLimitPrice = str(take_price_ch_short))
-                sl_order = session.set_trading_stop(category = 'linear', symbol = by_res['symbol'], stopLoss=str(stop_price_ch_short), slTriggerBy="LastPrice", tpslMode="Partial", slOrderType="Limit", slSize=str(rounded_smartQuontity), slLimitPrice = str(stop_price_ch_short))           
-                logging.info("%s. TP и SL успешно открыты в short", by_res['symbol'])
+            if side == 'LONG':
+                take_price_ch_long = dynamic_round((new_price + (self.take * new_price) / (self.marzha * 100)), ord_step_num)
+                stop_price_ch_long = dynamic_round((new_price - (self.stop * new_price) / (self.marzha * 100)), ord_step_num)
+                tp_order = self.session.set_trading_stop(category = 'linear', symbol = self.symbol, takeProfit=str(take_price_ch_long), tpTriggerBy="MarkPrice", tpslMode="Partial", tpOrderType="Limit", tpSize=str(rounded_smartQuontity), tpLimitPrice = str(take_price_ch_long), positionIdx = 1)
+                sl_order = self.session.set_trading_stop(category = 'linear', symbol = self.symbol, stopLoss=str(stop_price_ch_long), slTriggerBy="MarkPrice", tpslMode="Partial", slOrderType="Limit", slSize=str(rounded_smartQuontity), slLimitPrice = str(stop_price_ch_long), positionIdx = 1)
+                logging.info("%s. TP и SL успешно открыты в long", self.symbol)
+            elif side == 'SHORT':
+                take_price_ch_short = dynamic_round((new_price - (self.take * new_price) / (self.marzha * 100)), ord_step_num)
+                stop_price_ch_short = dynamic_round((new_price + (self.stop * new_price) / (self.marzha * 100)), ord_step_num)
+                tp_order = self.session.set_trading_stop(category = 'linear', symbol = self.symbol, takeProfit=str(take_price_ch_short), tpTriggerBy="MarkPrice", tpslMode="Partial", tpOrderType="Limit", tpSize=str(rounded_smartQuontity), tpLimitPrice = str(take_price_ch_short), positionIdx = 2)
+                sl_order = self.session.set_trading_stop(category = 'linear', symbol = self.symbol, stopLoss=str(stop_price_ch_short), slTriggerBy="MarkPrice", tpslMode="Partial", slOrderType="Limit", slSize=str(rounded_smartQuontity), slLimitPrice = str(stop_price_ch_short), positionIdx = 2)           
+                logging.info("%s. TP и SL успешно открыты в short", self.symbol)
         except Exception as e:
-            logging.error(f"{by_res['symbol']}. Не удалось создать TP и SL: {e}")
+            logging.error(f"{self.symbol}. Не удалось создать TP и SL: {e}")
 
     def handle_message(self, message):
         if 'data' in message and len(message['data']) > 0:
@@ -119,7 +123,7 @@ class CoinTrader:
 
             lower_band, sma, upper_band = self.calculate_bollinger_bands(list(self.closing_prices))
             if lower_band is not None and upper_band is not None:
-                logging.info(f"{self.symbol} lower {lower_band} upper {upper_band}")
+                # logging.info(f"{self.symbol} lower {lower_band} upper {upper_band}")
                 if not self.in_position:
                     if closing_price <= lower_band * 0.97:
                         logging.info(f"{self.symbol} Сигнал на покупку")
@@ -168,6 +172,7 @@ if __name__ == "__main__":
         settings = json.load(f)
 
     symbols = ['XRPUSDT', 'GASUSDT', 'SOLUSDT', 'TRBUSDT', 'DOTUSDT']
+    # symbols = ['DOTUSDT']
 
     threads = []
     for symbol in symbols:
