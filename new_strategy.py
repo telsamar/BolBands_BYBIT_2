@@ -32,8 +32,9 @@ class CoinTrader:
     def _setup_leverage(self):
         try:
             self.session.set_leverage(category='linear', symbol=self.symbol, buyLeverage=str(self.marzha), sellLeverage=str(self.marzha))
+            self.session.switch_position_mode(category = 'linear', symbol=self.symbol, mode=3)
         except Exception as e:
-            logging.debug("Произошла ошибка в установке маржи: %s", e)
+            logging.debug("Произошла ошибка в установке маржи или мода: %s", e)
 
     def _get_wallet_balance(self):
         try:
