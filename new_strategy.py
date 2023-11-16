@@ -88,6 +88,19 @@ class CoinTrader:
         except Exception as e:
             logging.error("Произошла ошибка в выставлении заявки на покупку: %s", e)
 
+<<<<<<< Updated upstream
+=======
+        datay = self.session.get_order_history(category="linear", orderId = result.get('result', {}).get('orderId', None))
+        logging.info(f'{self.symbol}. datay: {datay}')
+        new_price = float(datay.get('result', {}).get('list', [])[0].get('avgPrice', 'Не найдено'))
+        logging.info(f'{self.symbol}. Средняя цена открытой рыночной сделки: {new_price}')
+
+        # take_price_ch_short = dynamic_round((new_price - (self.take * new_price) / (self.marzha * 100)), ord_step_num)
+        # stop_price_ch_short = dynamic_round((new_price + (self.stop * new_price) / (self.marzha * 100)), ord_step_num)
+        # take_price_ch_long = dynamic_round((new_price + (self.take * new_price) / (self.marzha * 100)), ord_step_num)
+        # stop_price_ch_long = dynamic_round((new_price - (self.stop * new_price) / (self.marzha * 100)), ord_step_num)
+
+>>>>>>> Stashed changes
         try:
             datay = self.session.get_order_history(category="linear", orderId = result.get('result', {}).get('orderId', None))
             new_price = float(datay.get('result', {}).get('list', [])[0].get('avgPrice', 'Не найдено'))
