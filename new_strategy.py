@@ -23,7 +23,7 @@ class CoinTrader:
         self.take = float(settings["тейк"])
         self.stop = float(settings["стоп"])
         self.period = 20
-        self.multiplier = 2
+        self.multiplier = 2.5
         self.closing_prices = deque(maxlen=self.period)
         self.in_position = False
         self._setup_leverage()
@@ -91,7 +91,7 @@ class CoinTrader:
 
         datay = self.session.get_order_history(category="linear", orderId = result.get('result', {}).get('orderId', None))
         new_price = float(datay.get('result', {}).get('list', [])[0].get('avgPrice', 'Не найдено'))
-        logging.info(f'{self.symbol}. Средняя цена открытой рыночной сделки: {new_price}')
+        # logging.info(f'{self.symbol}. Средняя цена открытой рыночной сделки: {new_price}')
 
         # take_price_ch_short = dynamic_round((new_price - (self.take * new_price) / (self.marzha * 100)), ord_step_num)
         # stop_price_ch_short = dynamic_round((new_price + (self.stop * new_price) / (self.marzha * 100)), ord_step_num)
@@ -126,12 +126,14 @@ class CoinTrader:
             if lower_band is not None and upper_band is not None:
                 # logging.info(f"{self.symbol} lower {lower_band} upper {upper_band}")
                 if not self.in_position:
-                    if closing_price <= lower_band * 0.97:
+                    if closing_price <= lower_band * 0.99:
                         logging.info(f"{self.symbol} Сигнал на покупку")
                         self.create_order("LONG", closing_price)
-                    elif closing_price >= upper_band * 1.03:
+                        logging.info(f"lower_band: {lower_band} sma: {sma} upper_band: {upper_band}")
+                    elif closing_price >= upper_band * 1.01:
                         logging.info(f"{self.symbol} Сигнал на продажу")
                         self.create_order("SHORT", closing_price)
+                        logging.info(f"lower_band: {lower_band} sma: {sma} upper_band: {upper_band}")
                     else:
                         logging.debug(f"{self.symbol} Условия не выполняются")
                 else:
