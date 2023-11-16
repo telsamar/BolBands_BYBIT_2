@@ -23,7 +23,7 @@ class CoinTrader:
         self.take = float(settings["тейк"])
         self.stop = float(settings["стоп"])
         self.period = 20
-        self.multiplier = 2.6
+        self.multiplier = 2.5
         self.closing_prices = deque(maxlen=self.period)
         self.in_position = False
         self._setup_leverage()
@@ -90,6 +90,7 @@ class CoinTrader:
 
         try:
             datay = self.session.get_order_history(category="linear", orderId = result.get('result', {}).get('orderId', None))
+            logging.info(f'{datay}. datay: {datay}')
             new_price = float(datay.get('result', {}).get('list', [])[0].get('avgPrice', 'Не найдено'))
             logging.info(f'{self.symbol}. Средняя цена открытой рыночной сделки: {new_price}')
             if side == 'LONG':
