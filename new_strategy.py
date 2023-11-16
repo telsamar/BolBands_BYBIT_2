@@ -65,7 +65,6 @@ class CoinTrader:
         def dynamic_round(number, step_size):
             # logging.info("number: %s", number)
             # logging.info("step_size: %s", step_size)
-
             getcontext().prec = 10
             number = Decimal(str(number))
             step_size = Decimal(str(step_size))
