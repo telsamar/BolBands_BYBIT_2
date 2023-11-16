@@ -23,7 +23,7 @@ class CoinTrader:
         self.take = float(settings["тейк"])
         self.stop = float(settings["стоп"])
         self.period = 20
-        self.multiplier = 2.5
+        self.multiplier = 2.6
         self.closing_prices = deque(maxlen=self.period)
         self.in_position = False
         self._setup_leverage()
