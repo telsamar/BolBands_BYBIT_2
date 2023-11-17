@@ -63,16 +63,12 @@ class CoinTrader:
         qty_step_num = float(qty_step)
 
         def dynamic_round(number, step_size):
-            # logging.info("number: %s", number)
-            # logging.info("step_size: %s", step_size)
             getcontext().prec = 10
             number = Decimal(str(number))
             step_size = Decimal(str(step_size))
             decimal_places = len(str(step_size).split(".")[1]) if "." in str(step_size) else 0
-            # logging.info("decimal_places: %s", decimal_places)
 
             rounded_number = (number // step_size) * step_size
-            # logging.info("rounded_number: %s", rounded_number)
             return rounded_number.quantize(Decimal(10) ** -decimal_places)
 
         smartQuontity = self.cash * self.marzha / open_price
@@ -90,21 +86,16 @@ class CoinTrader:
 
         try:
             datay = self.session.get_order_history(category="linear", orderId = result.get('result', {}).get('orderId', None))
-            logging.info(f'{datay}. datay: {datay}')
             new_price = float(datay.get('result', {}).get('list', [])[0].get('avgPrice', 'Не найдено'))
             logging.info(f'{self.symbol}. Средняя цена открытой рыночной сделки: {new_price}')
             if side == 'LONG':
                 take_price_ch_long = dynamic_round((new_price + (self.take * new_price) / (self.marzha * 100)), ord_step_num)
                 stop_price_ch_long = dynamic_round((new_price - (self.stop * new_price) / (self.marzha * 100)), ord_step_num)
-                # tp_order = self.session.set_trading_stop(category = 'linear', symbol = self.symbol, takeProfit=str(take_price_ch_long), tpTriggerBy="MarkPrice", tpslMode="Partial", tpOrderType="Limit", tpSize=str(rounded_smartQuontity), tpLimitPrice = str(take_price_ch_long), positionIdx = 1)
-                # sl_order = self.session.set_trading_stop(category = 'linear', symbol = self.symbol, stopLoss=str(stop_price_ch_long), slTriggerBy="MarkPrice", tpslMode="Partial", slOrderType="Limit", slSize=str(rounded_smartQuontity), slLimitPrice = str(stop_price_ch_long), positionIdx = 1)
                 order = self.session.set_trading_stop(category = 'linear', symbol = self.symbol, takeProfit=str(take_price_ch_long), tpTriggerBy="MarkPrice", tpslMode="Partial", tpOrderType="Limit", tpSize=str(rounded_smartQuontity), tpLimitPrice = str(take_price_ch_long), stopLoss=str(stop_price_ch_long), slTriggerBy="MarkPrice", slOrderType="Limit", slSize=str(rounded_smartQuontity), slLimitPrice = str(stop_price_ch_long), positionIdx = 1)
                 logging.info("%s. TP и SL успешно открыты в long", self.symbol)
             elif side == 'SHORT':
                 take_price_ch_short = dynamic_round((new_price - (self.take * new_price) / (self.marzha * 100)), ord_step_num)
-                stop_price_ch_short = dynamic_round((new_price + (self.stop * new_price) / (self.marzha * 100)), ord_step_num)
-                # tp_order = self.session.set_trading_stop(category = 'linear', symbol = self.symbol, takeProfit=str(take_price_ch_short), tpTriggerBy="MarkPrice", tpslMode="Partial", tpOrderType="Limit", tpSize=str(rounded_smartQuontity), tpLimitPrice = str(take_price_ch_short), positionIdx = 2)
-                # sl_order = self.session.set_trading_stop(category = 'linear', symbol = self.symbol, stopLoss=str(stop_price_ch_short), slTriggerBy="MarkPrice", tpslMode="Partial", slOrderType="Limit", slSize=str(rounded_smartQuontity), slLimitPrice = str(stop_price_ch_short), positionIdx = 2)      
+                stop_price_ch_short = dynamic_round((new_price + (self.stop * new_price) / (self.marzha * 100)), ord_step_num)     
                 order = self.session.set_trading_stop(category = 'linear', symbol = self.symbol, takeProfit=str(take_price_ch_short), tpTriggerBy="MarkPrice", tpslMode="Partial", tpOrderType="Limit", tpSize=str(rounded_smartQuontity), tpLimitPrice = str(take_price_ch_short), stopLoss=str(stop_price_ch_short), slTriggerBy="MarkPrice", slOrderType="Limit", slSize=str(rounded_smartQuontity), slLimitPrice = str(stop_price_ch_short), positionIdx = 2)       
                 logging.info("%s. TP и SL успешно открыты в short", self.symbol)
         except Exception as e:
@@ -170,7 +161,6 @@ if __name__ == "__main__":
         settings = json.load(f)
 
     symbols = ['XRPUSDT', 'GASUSDT', 'SOLUSDT', 'TRBUSDT', 'DOTUSDT', 'BTCUSDT', 'ETHUSDT', 'AVAXUSDT', 'MATICUSDT', 'ADAUSDT', 'APTUSDT']
-    # symbols = ['DOTUSDT']
 
     threads = []
     for symbol in symbols:
