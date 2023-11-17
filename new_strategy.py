@@ -22,8 +22,8 @@ class CoinTrader:
         self.marzha = float(settings["маржа"])
         self.take = float(settings["тейк"])
         self.stop = float(settings["стоп"])
-        self.period = 20
-        self.multiplier = 2.5
+        self.period = 25
+        self.multiplier = 2.6
         self.closing_prices = deque(maxlen=self.period)
         self.in_position = False
         self._setup_leverage()
@@ -112,11 +112,11 @@ class CoinTrader:
             lower_band, sma, upper_band = self.calculate_bollinger_bands(list(self.closing_prices))
             if lower_band is not None and upper_band is not None:
                 if not self.in_position:
-                    if closing_price <= lower_band * 0.985:
+                    if closing_price <= lower_band:
                         logging.info(f"{self.symbol} Сигнал на покупку")
                         self.create_order("LONG", closing_price)
                         logging.info(f"lower_band: {lower_band} sma: {sma} upper_band: {upper_band}")
-                    elif closing_price >= upper_band * 1.015:
+                    elif closing_price >= upper_band:
                         logging.info(f"{self.symbol} Сигнал на продажу")
                         self.create_order("SHORT", closing_price)
                         logging.info(f"lower_band: {lower_band} sma: {sma} upper_band: {upper_band}")
