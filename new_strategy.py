@@ -22,8 +22,8 @@ class CoinTrader:
         self.marzha = float(settings["маржа"])
         self.take = float(settings["тейк"])
         self.stop = float(settings["стоп"])
-        self.period = 25
-        self.multiplier = 2.6
+        self.period = 24
+        self.multiplier = 3
         self.closing_prices = deque(maxlen=self.period)
         self.in_position = False
         self._setup_leverage()
@@ -91,12 +91,12 @@ class CoinTrader:
             if side == 'LONG':
                 take_price_ch_long = dynamic_round((new_price + (self.take * new_price) / (self.marzha * 100)), ord_step_num)
                 stop_price_ch_long = dynamic_round((new_price - (self.stop * new_price) / (self.marzha * 100)), ord_step_num)
-                order = self.session.set_trading_stop(category = 'linear', symbol = self.symbol, takeProfit=str(take_price_ch_long), tpTriggerBy="MarkPrice", tpslMode="Partial", tpOrderType="Limit", tpSize=str(rounded_smartQuontity), tpLimitPrice = str(take_price_ch_long), stopLoss=str(stop_price_ch_long), slTriggerBy="MarkPrice", slOrderType="Limit", slSize=str(rounded_smartQuontity), slLimitPrice = str(stop_price_ch_long), positionIdx = 1)
+                order = self.session.set_trading_stop(category = 'linear', symbol = self.symbol, takeProfit=str(take_price_ch_long), tpTriggerBy="MarkPrice", tpslMode="Partial", tpOrderType="Limit", tpSize=str(rounded_smartQuontity), tpLimitPrice = str(take_price_ch_long), stopLoss=str(stop_price_ch_long), slTriggerBy="MarkPrice", slOrderType="Market", slSize=str(rounded_smartQuontity), positionIdx = 1)
                 logging.info("%s. TP и SL успешно открыты в long", self.symbol)
             elif side == 'SHORT':
                 take_price_ch_short = dynamic_round((new_price - (self.take * new_price) / (self.marzha * 100)), ord_step_num)
                 stop_price_ch_short = dynamic_round((new_price + (self.stop * new_price) / (self.marzha * 100)), ord_step_num)     
-                order = self.session.set_trading_stop(category = 'linear', symbol = self.symbol, takeProfit=str(take_price_ch_short), tpTriggerBy="MarkPrice", tpslMode="Partial", tpOrderType="Limit", tpSize=str(rounded_smartQuontity), tpLimitPrice = str(take_price_ch_short), stopLoss=str(stop_price_ch_short), slTriggerBy="MarkPrice", slOrderType="Limit", slSize=str(rounded_smartQuontity), slLimitPrice = str(stop_price_ch_short), positionIdx = 2)       
+                order = self.session.set_trading_stop(category = 'linear', symbol = self.symbol, takeProfit=str(take_price_ch_short), tpTriggerBy="MarkPrice", tpslMode="Partial", tpOrderType="Limit", tpSize=str(rounded_smartQuontity), tpLimitPrice = str(take_price_ch_short), stopLoss=str(stop_price_ch_short), slTriggerBy="MarkPrice", slOrderType="Market", slSize=str(rounded_smartQuontity), positionIdx = 2)       
                 logging.info("%s. TP и SL успешно открыты в short", self.symbol)
         except Exception as e:
             logging.error(f"{self.symbol}. Не удалось создать TP и SL: {e}")
