@@ -22,8 +22,8 @@ class CoinTrader:
         self.marzha = float(settings["маржа"])
         self.take = float(settings["тейк"])
         self.stop = float(settings["стоп"])
-        self.period = 24
-        self.multiplier = 3
+        self.period = 150
+        self.multiplier = 2.5
         self.closing_prices = deque(maxlen=self.period)
         self.in_position = False
         self._setup_leverage()
@@ -112,11 +112,11 @@ class CoinTrader:
             lower_band, sma, upper_band = self.calculate_bollinger_bands(list(self.closing_prices))
             if lower_band is not None and upper_band is not None:
                 if not self.in_position:
-                    if closing_price <= lower_band:
+                    if closing_price <= lower_band * 0.975:
                         logging.info(f"{self.symbol} Сигнал на покупку")
                         self.create_order("LONG", closing_price)
                         logging.info(f"lower_band: {lower_band} sma: {sma} upper_band: {upper_band}")
-                    elif closing_price >= upper_band:
+                    elif closing_price >= upper_band * 1.025:
                         logging.info(f"{self.symbol} Сигнал на продажу")
                         self.create_order("SHORT", closing_price)
                         logging.info(f"lower_band: {lower_band} sma: {sma} upper_band: {upper_band}")
@@ -138,7 +138,7 @@ class CoinTrader:
             return None
 
     def start_trading(self):
-        self.ws.kline_stream(interval='5', symbol=self.symbol, callback=lambda msg: self._run_in_thread(self.handle_message, msg))
+        self.ws.kline_stream(interval='1', symbol=self.symbol, callback=lambda msg: self._run_in_thread(self.handle_message, msg))
         try:
             while True:
                 sleep(1)
