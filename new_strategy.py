@@ -22,7 +22,7 @@ class CoinTrader:
         self.marzha = float(settings["маржа"])
         self.take = float(settings["тейк"])
         self.stop = float(settings["стоп"])
-        self.period = 150
+        self.period = 120
         self.multiplier = 2.5
         self.closing_prices = deque(maxlen=self.period)
         self.in_position = False
@@ -112,11 +112,11 @@ class CoinTrader:
             lower_band, sma, upper_band = self.calculate_bollinger_bands(list(self.closing_prices))
             if lower_band is not None and upper_band is not None:
                 if not self.in_position:
-                    if closing_price <= lower_band * 0.975:
+                    if closing_price <= lower_band * 0.99:
                         logging.info(f"{self.symbol} Сигнал на покупку")
                         self.create_order("LONG", closing_price)
                         logging.info(f"lower_band: {lower_band} sma: {sma} upper_band: {upper_band}")
-                    elif closing_price >= upper_band * 1.025:
+                    elif closing_price >= upper_band * 1.01:
                         logging.info(f"{self.symbol} Сигнал на продажу")
                         self.create_order("SHORT", closing_price)
                         logging.info(f"lower_band: {lower_band} sma: {sma} upper_band: {upper_band}")
@@ -160,7 +160,7 @@ if __name__ == "__main__":
     with open('settings.json', 'r') as f:
         settings = json.load(f)
 
-    symbols = ['XRPUSDT', 'GASUSDT', 'SOLUSDT', 'TRBUSDT', 'DOTUSDT', 'BTCUSDT', 'ETHUSDT', 'AVAXUSDT', 'MATICUSDT', 'ADAUSDT', 'APTUSDT']
+    symbols = ['XRPUSDT', 'SOLUSDT', 'TRBUSDT', 'DOTUSDT', 'BTCUSDT', 'ETHUSDT', 'AVAXUSDT', 'MATICUSDT', 'ADAUSDT', 'APTUSDT']
 
     threads = []
     for symbol in symbols:
