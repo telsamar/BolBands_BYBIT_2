@@ -4,4 +4,5 @@ __pycache__/
 bybit_keys.py 
 env/
 venv/
+myenv1/
 bot_keys.py

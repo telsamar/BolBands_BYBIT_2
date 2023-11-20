@@ -8,7 +8,7 @@ from decimal import Decimal, getcontext
 import threading
 import logging
 
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s', filename='coin_trader.log', filemode='w')
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s', filename='coin_trader.log', filemode='w', encoding='utf-8')
 
 class CoinTrader:
     def __init__(self, symbol, settings):
@@ -18,16 +18,22 @@ class CoinTrader:
         self.api_secret = bybit_secret_key
         self.ws = WebSocket(testnet=True, channel_type="linear", api_key=self.api_key, api_secret=self.api_secret)
         self.session = HTTP(testnet=False, api_key=self.api_key, api_secret=self.api_secret)
-        self.cash = float(settings["сумма"])
-        self.marzha = float(settings["маржа"])
-        self.take = float(settings["тейк"])
-        self.stop = float(settings["стоп"])
+        self.cash = float(settings["summa"])
+        self.marzha = float(settings["marzha"])
+        self.take = float(settings["take"])
+        self.stop = float(settings["stop"])
         self.period = 120
         self.multiplier = 2.5
         self.closing_prices = deque(maxlen=self.period)
+        self.open_prices = deque(maxlen=self.period)
+        self.high_prices = deque(maxlen=self.period)
+        self.low_prices = deque(maxlen=self.period)
+        self.volumes = deque(maxlen=self.period)
+        self.turnovers = deque(maxlen=self.period)
         self.in_position = False
         self._setup_leverage()
         self._get_wallet_balance()
+        self._load_historical_data()
 
     def _setup_leverage(self):
         try:
@@ -91,12 +97,14 @@ class CoinTrader:
             if side == 'LONG':
                 take_price_ch_long = dynamic_round((new_price + (self.take * new_price) / (self.marzha * 100)), ord_step_num)
                 stop_price_ch_long = dynamic_round((new_price - (self.stop * new_price) / (self.marzha * 100)), ord_step_num)
-                order = self.session.set_trading_stop(category = 'linear', symbol = self.symbol, takeProfit=str(take_price_ch_long), tpTriggerBy="MarkPrice", tpslMode="Partial", tpOrderType="Limit", tpSize=str(rounded_smartQuontity), tpLimitPrice = str(take_price_ch_long), stopLoss=str(stop_price_ch_long), slTriggerBy="MarkPrice", slOrderType="Market", slSize=str(rounded_smartQuontity), positionIdx = 1)
+                # order = self.session.set_trading_stop(category = 'linear', symbol = self.symbol, takeProfit=str(take_price_ch_long), tpTriggerBy="MarkPrice", tpslMode="Partial", tpOrderType="Limit", tpSize=str(rounded_smartQuontity), tpLimitPrice = str(take_price_ch_long), stopLoss=str(stop_price_ch_long), slTriggerBy="MarkPrice", slOrderType="Market", slSize=str(rounded_smartQuontity), positionIdx = 1)
+                order = self.session.set_trading_stop(category = 'linear', symbol = self.symbol, takeProfit=str(take_price_ch_long), tpTriggerBy="MarkPrice", tpslMode="Partial", tpOrderType="Limit", tpSize=str(rounded_smartQuontity), tpLimitPrice = str(take_price_ch_long), positionIdx = 1)
                 logging.info("%s. TP и SL успешно открыты в long", self.symbol)
             elif side == 'SHORT':
                 take_price_ch_short = dynamic_round((new_price - (self.take * new_price) / (self.marzha * 100)), ord_step_num)
                 stop_price_ch_short = dynamic_round((new_price + (self.stop * new_price) / (self.marzha * 100)), ord_step_num)     
-                order = self.session.set_trading_stop(category = 'linear', symbol = self.symbol, takeProfit=str(take_price_ch_short), tpTriggerBy="MarkPrice", tpslMode="Partial", tpOrderType="Limit", tpSize=str(rounded_smartQuontity), tpLimitPrice = str(take_price_ch_short), stopLoss=str(stop_price_ch_short), slTriggerBy="MarkPrice", slOrderType="Market", slSize=str(rounded_smartQuontity), positionIdx = 2)       
+                # order = self.session.set_trading_stop(category = 'linear', symbol = self.symbol, takeProfit=str(take_price_ch_short), tpTriggerBy="MarkPrice", tpslMode="Partial", tpOrderType="Limit", tpSize=str(rounded_smartQuontity), tpLimitPrice = str(take_price_ch_short), stopLoss=str(stop_price_ch_short), slTriggerBy="MarkPrice", slOrderType="Market", slSize=str(rounded_smartQuontity), positionIdx = 2)       
+                order = self.session.set_trading_stop(category = 'linear', symbol = self.symbol, takeProfit=str(take_price_ch_short), tpTriggerBy="MarkPrice", tpslMode="Partial", tpOrderType="Limit", tpSize=str(rounded_smartQuontity), tpLimitPrice = str(take_price_ch_short), positionIdx = 2)   
                 logging.info("%s. TP и SL успешно открыты в short", self.symbol)
         except Exception as e:
             logging.error(f"{self.symbol}. Не удалось создать TP и SL: {e}")
@@ -104,22 +112,28 @@ class CoinTrader:
     def handle_message(self, message):
         if 'data' in message and len(message['data']) > 0:
             candle = message['data'][0]
-            closing_price = float(candle['close'])
 
             if candle['confirm'] == True:
-                self.closing_prices.append(closing_price)
+                self.open_prices.append(float(candle['open']))
+                self.high_prices.append(float(candle['high']))
+                self.low_prices.append(float(candle['low']))
+                self.closing_prices.append(float(candle['close']))
+                self.volumes.append(float(candle['volume']))
+                self.turnovers.append(float(candle['turnover']))
 
-            lower_band, sma, upper_band = self.calculate_bollinger_bands(list(self.closing_prices))
+            current_close_price = float(candle['close'])
+            lower_band, sma, upper_band = self.calculate_bollinger_bands(list(self.closing_prices) + [current_close_price])
+            logging.info(f"lower_band: {lower_band}, sma: {sma}, upper_band: {upper_band}")
             if lower_band is not None and upper_band is not None:
                 if not self.in_position:
-                    if closing_price <= lower_band * 0.995:
+                    if current_close_price <= lower_band * 0.995:
                         logging.info(f"{self.symbol} Сигнал на покупку")
-                        self.create_order("LONG", closing_price)
-                        logging.info(f"lower_band: {lower_band} sma: {sma} upper_band: {upper_band}")
-                    elif closing_price >= upper_band * 1.005:
+                        # self.create_order("LONG", candle['close'])
+                        logging.info(f"lower_band: {lower_band}, sma: {sma}, upper_band: {upper_band}")
+                    elif current_close_price >= upper_band * 1.005:
                         logging.info(f"{self.symbol} Сигнал на продажу")
-                        self.create_order("SHORT", closing_price)
-                        logging.info(f"lower_band: {lower_band} sma: {sma} upper_band: {upper_band}")
+                        # self.create_order("SHORT", candle['close'])
+                        logging.info(f"lower_band: {lower_band}, sma: {sma}, upper_band: {upper_band}")
                     else:
                         logging.debug(f"{self.symbol} Условия не выполняются")
                 else:
@@ -136,6 +150,21 @@ class CoinTrader:
         except Exception as e:
             logging.error(f"Ошибка при проверке открытых позиций: {e}")
             return None
+
+    def _load_historical_data(self, interval=1):
+        try:
+            historical_data = self.session.get_kline(symbol=self.symbol, interval=interval, limit=self.period)
+            if 'result' in historical_data and 'list' in historical_data['result']:
+                for candle in historical_data['result']['list']:
+                    self.open_prices.append(float(candle[1]))    # open price
+                    self.high_prices.append(float(candle[2]))    # high price
+                    self.low_prices.append(float(candle[3]))     # low price
+                    self.closing_prices.append(float(candle[4])) # close price
+                    self.volumes.append(float(candle[5]))        # volume
+                    self.turnovers.append(float(candle[6]))      # turnover
+                logging.info(f"{self.symbol} Исторические данные загружены.")
+        except Exception as e:
+            logging.error(f"Ошибка загрузки исторических данных: {e}")
 
     def start_trading(self):
         self.ws.kline_stream(interval='1', symbol=self.symbol, callback=lambda msg: self._run_in_thread(self.handle_message, msg))
@@ -160,7 +189,8 @@ if __name__ == "__main__":
     with open('settings.json', 'r') as f:
         settings = json.load(f)
 
-    symbols = ['XRPUSDT', 'SOLUSDT', 'TRBUSDT', 'DOTUSDT', 'BTCUSDT', 'ETHUSDT', 'AVAXUSDT', 'MATICUSDT', 'ADAUSDT', 'APTUSDT']
+    # symbols = ['XRPUSDT', 'SOLUSDT', 'TRBUSDT', 'DOTUSDT', 'BTCUSDT', 'ETHUSDT', 'AVAXUSDT', 'MATICUSDT', 'ADAUSDT', 'APTUSDT']
+    symbols = ['APTUSDT']
 
     threads = []
     for symbol in symbols:
