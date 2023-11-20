@@ -56,8 +56,8 @@ class CoinTrader:
             return None, None, None
         
         prices_series = pd.Series(prices)
-        average = prices_series.ewm(span=self.period).mean().iloc[-1]  # Используем EMA и .iloc[-1] для доступа к последнему элементу
-        std_dev = np.std(prices, ddof=1)  # Используем смещенное стандартное отклонение
+        average = prices_series.ewm(span=self.period).mean().iloc[-1]
+        std_dev = np.std(prices, ddof=1)
         upper_band = average + (std_dev * self.multiplier)
         lower_band = average - (std_dev * self.multiplier)
         return lower_band, average, upper_band
@@ -130,7 +130,7 @@ class CoinTrader:
             logging.info(f"{self.symbol} lower_band: {lower_band}, ema: {ema}, upper_band: {upper_band}")
             if lower_band is not None and upper_band is not None:
                 if not self.in_position:
-                    if current_close_price <= lower_band * 0.993:
+                    if current_close_price <= lower_band * 0.997:
                         self.create_order("LONG", candle['close'])
                         logging.info(f"{self.symbol} Сигнал на покупку")
                     elif current_close_price >= upper_band * 1.003:
@@ -191,8 +191,8 @@ if __name__ == "__main__":
     with open('settings.json', 'r') as f:
         settings = json.load(f)
 
-    # symbols = ['XRPUSDT', 'SOLUSDT', 'TRBUSDT', 'DOTUSDT', 'BTCUSDT', 'ETHUSDT', 'AVAXUSDT', 'MATICUSDT', 'ADAUSDT', 'APTUSDT']
-    symbols = ['APTUSDT']
+    symbols = ['XRPUSDT', 'SOLUSDT', 'TRBUSDT', 'DOTUSDT', 'BTCUSDT', 'ETHUSDT', 'AVAXUSDT', 'MATICUSDT', 'ADAUSDT', 'APTUSDT']
+    # symbols = ['APTUSDT']
 
     threads = []
     for symbol in symbols:
