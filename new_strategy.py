@@ -202,7 +202,7 @@ if __name__ == "__main__":
     with open('settings.json', 'r') as f:
         settings = json.load(f)
 
-    symbols = ['XRPUSDT', 'SOLUSDT', 'TRBUSDT', 'DOTUSDT', 'BTCUSDT', 'ETHUSDT', 'AVAXUSDT', 'MATICUSDT', 'ADAUSDT', 'APTUSDT', 'BNBUSDT', 'LINKUSDT', 'LTCUSDT']
+    symbols = ['XRPUSDT', 'TRBUSDT', 'DOTUSDT', 'BTCUSDT', 'ETHUSDT', 'AVAXUSDT', 'MATICUSDT', 'ADAUSDT', 'APTUSDT', 'BNBUSDT', 'LINKUSDT', 'LTCUSDT']
     # symbols = ['TRBUSDT']
 
     threads = []
