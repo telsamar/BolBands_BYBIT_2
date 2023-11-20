@@ -87,10 +87,10 @@ class CoinTrader:
         try:
             if side == 'LONG':
                 result = self.session.place_order(category = 'linear', symbol = self.symbol, side = 'Buy', orderType = 'Market', isLeverage = 1, qty = rounded_smartQuontity, positionIdx = 1)
-                logging.info('bybit. Открыли LONG')
+                logging.info(f'{self.symbol}. Открыли LONG')
             elif side == 'SHORT':
                 result = self.session.place_order(category = 'linear', symbol = self.symbol, side = 'Sell', orderType = 'Market', isLeverage = 1, qty = rounded_smartQuontity, positionIdx = 2)
-                logging.info('bybit. Открыли SHORT')
+                logging.info(f'{self.symbol}. Открыли SHORT')
         except Exception as e:
             logging.error("Произошла ошибка в выставлении заявки на покупку: %s", e)
 
@@ -127,7 +127,6 @@ class CoinTrader:
 
             current_close_price = float(candle['close'])
             lower_band, ema, upper_band = self.calculate_bollinger_bands(list(self.closing_prices) + [current_close_price])
-            # logging.info(f"{self.symbol} lower_band: {lower_band}, ema: {ema}, upper_band: {upper_band}")
             if lower_band is not None and upper_band is not None:
                 if not self.in_position:
                     if current_close_price <= lower_band * 0.995:
@@ -191,7 +190,7 @@ if __name__ == "__main__":
     with open('settings.json', 'r') as f:
         settings = json.load(f)
 
-    symbols = ['XRPUSDT', 'SOLUSDT', 'TRBUSDT', 'DOTUSDT', 'BTCUSDT', 'ETHUSDT', 'AVAXUSDT', 'MATICUSDT', 'ADAUSDT', 'APTUSDT']
+    symbols = ['XRPUSDT', 'SOLUSDT', 'TRBUSDT', 'DOTUSDT', 'BTCUSDT', 'ETHUSDT', 'AVAXUSDT', 'MATICUSDT', 'ADAUSDT', 'APTUSDT', 'BNBUSDT', 'LINKUSDT', 'LTCUSDT']
     # symbols = ['TRBUSDT']
 
     threads = []
