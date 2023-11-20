@@ -96,20 +96,32 @@ class CoinTrader:
 
         try:
             datay = self.session.get_order_history(category="linear", orderId = result.get('result', {}).get('orderId', None))
-            new_price = float(datay.get('result', {}).get('list', [])[0].get('avgPrice', 'Не найдено'))
-            logging.info(f'{self.symbol}. Средняя цена открытой рыночной сделки: {new_price}')
-            if side == 'LONG':
-                take_price_ch_long = dynamic_round((new_price + (self.take * new_price) / (self.marzha * 100)), ord_step_num)
-                stop_price_ch_long = dynamic_round((new_price - (self.stop * new_price) / (self.marzha * 100)), ord_step_num)
-                # order = self.session.set_trading_stop(category = 'linear', symbol = self.symbol, takeProfit=str(take_price_ch_long), tpTriggerBy="MarkPrice", tpslMode="Partial", tpOrderType="Limit", tpSize=str(rounded_smartQuontity), tpLimitPrice = str(take_price_ch_long), stopLoss=str(stop_price_ch_long), slTriggerBy="MarkPrice", slOrderType="Market", slSize=str(rounded_smartQuontity), positionIdx = 1)
-                order = self.session.set_trading_stop(category = 'linear', symbol = self.symbol, takeProfit=str(take_price_ch_long), tpTriggerBy="MarkPrice", tpslMode="Partial", tpOrderType="Limit", tpSize=str(rounded_smartQuontity), tpLimitPrice = str(take_price_ch_long), positionIdx = 1)
-                logging.info("%s. TP и SL успешно открыты в long", self.symbol)
-            elif side == 'SHORT':
-                take_price_ch_short = dynamic_round((new_price - (self.take * new_price) / (self.marzha * 100)), ord_step_num)
-                stop_price_ch_short = dynamic_round((new_price + (self.stop * new_price) / (self.marzha * 100)), ord_step_num)     
-                # order = self.session.set_trading_stop(category = 'linear', symbol = self.symbol, takeProfit=str(take_price_ch_short), tpTriggerBy="MarkPrice", tpslMode="Partial", tpOrderType="Limit", tpSize=str(rounded_smartQuontity), tpLimitPrice = str(take_price_ch_short), stopLoss=str(stop_price_ch_short), slTriggerBy="MarkPrice", slOrderType="Market", slSize=str(rounded_smartQuontity), positionIdx = 2)       
-                order = self.session.set_trading_stop(category = 'linear', symbol = self.symbol, takeProfit=str(take_price_ch_short), tpTriggerBy="MarkPrice", tpslMode="Partial", tpOrderType="Limit", tpSize=str(rounded_smartQuontity), tpLimitPrice = str(take_price_ch_short), positionIdx = 2)   
-                logging.info("%s. TP и SL успешно открыты в short", self.symbol)
+            list_data = datay.get('result', {}).get('list', [])
+            if list_data:
+                new_price = float(list_data[0].get('avgPrice', 'Не найдено'))
+                logging.info(f'{self.symbol}. Средняя цена открытой рыночной сделки: {new_price}')
+                if side == 'LONG':
+                    take_price_ch_long = dynamic_round((new_price + (self.take * new_price) / (self.marzha * 100)), ord_step_num)
+                    stop_price_ch_long = dynamic_round((new_price - (self.stop * new_price) / (self.marzha * 100)), ord_step_num)
+                    order = self.session.set_trading_stop(category = 'linear', symbol = self.symbol, takeProfit=str(take_price_ch_long), tpTriggerBy="MarkPrice", tpslMode="Partial", tpOrderType="Limit", tpSize=str(rounded_smartQuontity), tpLimitPrice = str(take_price_ch_long), positionIdx = 1)
+                    logging.info("%s. TP и SL успешно открыты в long", self.symbol)
+                elif side == 'SHORT':
+                    take_price_ch_short = dynamic_round((new_price - (self.take * new_price) / (self.marzha * 100)), ord_step_num)
+                    stop_price_ch_short = dynamic_round((new_price + (self.stop * new_price) / (self.marzha * 100)), ord_step_num)         
+                    order = self.session.set_trading_stop(category = 'linear', symbol = self.symbol, takeProfit=str(take_price_ch_short), tpTriggerBy="MarkPrice", tpslMode="Partial", tpOrderType="Limit", tpSize=str(rounded_smartQuontity), tpLimitPrice = str(take_price_ch_short), positionIdx = 2)   
+                    logging.info("%s. TP и SL успешно открыты в short", self.symbol)
+            else:
+                logging.error(f"{self.symbol}. Список заказов пуст. ")
+                if side == 'LONG':
+                    take_price_ch_long = dynamic_round((open_price + (self.take * open_price) / (self.marzha * 100)), ord_step_num)
+                    stop_price_ch_long = dynamic_round((open_price - (self.stop * open_price) / (self.marzha * 100)), ord_step_num)
+                    order = self.session.set_trading_stop(category = 'linear', symbol = self.symbol, takeProfit=str(take_price_ch_long), tpTriggerBy="MarkPrice", tpslMode="Partial", tpOrderType="Limit", tpSize=str(rounded_smartQuontity), tpLimitPrice = str(take_price_ch_long), positionIdx = 1)
+                    logging.info("%s. TP и SL АЛЬТЕРНАТИВНО открыты в long", self.symbol)
+                elif side == 'SHORT':
+                    take_price_ch_short = dynamic_round((open_price - (self.take * open_price) / (self.marzha * 100)), ord_step_num)
+                    stop_price_ch_short = dynamic_round((open_price + (self.stop * open_price) / (self.marzha * 100)), ord_step_num)         
+                    order = self.session.set_trading_stop(category = 'linear', symbol = self.symbol, takeProfit=str(take_price_ch_short), tpTriggerBy="MarkPrice", tpslMode="Partial", tpOrderType="Limit", tpSize=str(rounded_smartQuontity), tpLimitPrice = str(take_price_ch_short), positionIdx = 2)   
+                    logging.info("%s. TP и SL АЛЬТЕРНАТИВНО открыты в short", self.symbol)
         except Exception as e:
             logging.error(f"{self.symbol}. Не удалось создать TP и SL: {e}")
 
