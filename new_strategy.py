@@ -2,6 +2,7 @@ from bybit_keys import bybit_api_key, bybit_secret_key
 from pybit.unified_trading import WebSocket, HTTP
 from time import sleep
 import numpy as np
+import pandas as pd
 from collections import deque
 import json
 from decimal import Decimal, getcontext
@@ -22,8 +23,8 @@ class CoinTrader:
         self.marzha = float(settings["marzha"])
         self.take = float(settings["take"])
         self.stop = float(settings["stop"])
-        self.period = 120
-        self.multiplier = 2.5
+        self.period = 90
+        self.multiplier = 2
         self.closing_prices = deque(maxlen=self.period)
         self.open_prices = deque(maxlen=self.period)
         self.high_prices = deque(maxlen=self.period)
@@ -53,14 +54,17 @@ class CoinTrader:
     def calculate_bollinger_bands(self, prices):
         if len(prices) < self.period:
             return None, None, None
-        average = np.mean(prices)
-        std_dev = np.std(prices)
+        
+        prices_series = pd.Series(prices)
+        average = prices_series.ewm(span=self.period).mean().iloc[-1]  # Используем EMA и .iloc[-1] для доступа к последнему элементу
+        std_dev = np.std(prices, ddof=1)  # Используем смещенное стандартное отклонение
         upper_band = average + (std_dev * self.multiplier)
         lower_band = average - (std_dev * self.multiplier)
         return lower_band, average, upper_band
 
     def create_order(self, side, open_price):
         self.in_position = True
+        open_price = float(open_price)
         dataz = self.session.get_instruments_info(category="linear", symbol=self.symbol)
         ord_step = dataz['result']['list'][0]['priceFilter']['tickSize']
         ord_step_num = float(ord_step)
@@ -122,18 +126,16 @@ class CoinTrader:
                 self.turnovers.append(float(candle['turnover']))
 
             current_close_price = float(candle['close'])
-            lower_band, sma, upper_band = self.calculate_bollinger_bands(list(self.closing_prices) + [current_close_price])
-            logging.info(f"lower_band: {lower_band}, sma: {sma}, upper_band: {upper_band}")
+            lower_band, ema, upper_band = self.calculate_bollinger_bands(list(self.closing_prices) + [current_close_price])
+            logging.info(f"{self.symbol} lower_band: {lower_band}, ema: {ema}, upper_band: {upper_band}")
             if lower_band is not None and upper_band is not None:
                 if not self.in_position:
-                    if current_close_price <= lower_band * 0.995:
+                    if current_close_price <= lower_band * 0.993:
+                        self.create_order("LONG", candle['close'])
                         logging.info(f"{self.symbol} Сигнал на покупку")
-                        # self.create_order("LONG", candle['close'])
-                        logging.info(f"lower_band: {lower_band}, sma: {sma}, upper_band: {upper_band}")
-                    elif current_close_price >= upper_band * 1.005:
+                    elif current_close_price >= upper_band * 1.003:
+                        self.create_order("SHORT", candle['close'])
                         logging.info(f"{self.symbol} Сигнал на продажу")
-                        # self.create_order("SHORT", candle['close'])
-                        logging.info(f"lower_band: {lower_band}, sma: {sma}, upper_band: {upper_band}")
                     else:
                         logging.debug(f"{self.symbol} Условия не выполняются")
                 else:
