@@ -130,10 +130,10 @@ class CoinTrader:
             logging.info(f"{self.symbol} lower_band: {lower_band}, ema: {ema}, upper_band: {upper_band}")
             if lower_band is not None and upper_band is not None:
                 if not self.in_position:
-                    if current_close_price <= lower_band * 0.996:
+                    if current_close_price <= lower_band * 0.995:
                         self.create_order("LONG", candle['close'])
                         logging.info(f"{self.symbol} Сигнал на покупку lower_band: {lower_band}, ema: {ema}, upper_band: {upper_band}")
-                    elif current_close_price >= upper_band * 1.004:
+                    elif current_close_price >= upper_band * 1.005:
                         self.create_order("SHORT", candle['close'])
                         logging.info(f"{self.symbol} Сигнал на продажу lower_band: {lower_band}, ema: {ema}, upper_band: {upper_band}")
                     else:
