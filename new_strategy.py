@@ -101,14 +101,14 @@ class CoinTrader:
             if side == 'LONG':
                 take_price_ch_long = dynamic_round((new_price + (self.take * new_price) / (self.marzha * 100)), ord_step_num)
                 stop_price_ch_long = dynamic_round((new_price - (self.stop * new_price) / (self.marzha * 100)), ord_step_num)
-                # order = self.session.set_trading_stop(category = 'linear', symbol = self.symbol, takeProfit=str(take_price_ch_long), tpTriggerBy="MarkPrice", tpslMode="Partial", tpOrderType="Limit", tpSize=str(rounded_smartQuontity), tpLimitPrice = str(take_price_ch_long), stopLoss=str(stop_price_ch_long), slTriggerBy="MarkPrice", slOrderType="Market", slSize=str(rounded_smartQuontity), positionIdx = 1)
-                order = self.session.set_trading_stop(category = 'linear', symbol = self.symbol, takeProfit=str(take_price_ch_long), tpTriggerBy="MarkPrice", tpslMode="Partial", tpOrderType="Limit", tpSize=str(rounded_smartQuontity), tpLimitPrice = str(take_price_ch_long), positionIdx = 1)
+                # order = self.session.set_trading_stop(category = 'linear', symbol = self.symbol, takeProfit=str(take_price_ch_long), tpTriggerBy="IndexPrice", tpslMode="Partial", tpOrderType="Limit", tpSize=str(rounded_smartQuontity), tpLimitPrice = str(take_price_ch_long), stopLoss=str(stop_price_ch_long), slTriggerBy="IndexPrice", slOrderType="Market", slSize=str(rounded_smartQuontity), positionIdx = 1)
+                order = self.session.set_trading_stop(category = 'linear', symbol = self.symbol, takeProfit=str(take_price_ch_long), tpTriggerBy="IndexPrice", tpslMode="Partial", tpOrderType="Limit", tpSize=str(rounded_smartQuontity), tpLimitPrice = str(take_price_ch_long), positionIdx = 1)
                 logging.info("%s. TP и SL успешно открыты в long", self.symbol)
             elif side == 'SHORT':
                 take_price_ch_short = dynamic_round((new_price - (self.take * new_price) / (self.marzha * 100)), ord_step_num)
                 stop_price_ch_short = dynamic_round((new_price + (self.stop * new_price) / (self.marzha * 100)), ord_step_num)     
-                # order = self.session.set_trading_stop(category = 'linear', symbol = self.symbol, takeProfit=str(take_price_ch_short), tpTriggerBy="MarkPrice", tpslMode="Partial", tpOrderType="Limit", tpSize=str(rounded_smartQuontity), tpLimitPrice = str(take_price_ch_short), stopLoss=str(stop_price_ch_short), slTriggerBy="MarkPrice", slOrderType="Market", slSize=str(rounded_smartQuontity), positionIdx = 2)       
-                order = self.session.set_trading_stop(category = 'linear', symbol = self.symbol, takeProfit=str(take_price_ch_short), tpTriggerBy="MarkPrice", tpslMode="Partial", tpOrderType="Limit", tpSize=str(rounded_smartQuontity), tpLimitPrice = str(take_price_ch_short), positionIdx = 2)   
+                # order = self.session.set_trading_stop(category = 'linear', symbol = self.symbol, takeProfit=str(take_price_ch_short), tpTriggerBy="IndexPrice", tpslMode="Partial", tpOrderType="Limit", tpSize=str(rounded_smartQuontity), tpLimitPrice = str(take_price_ch_short), stopLoss=str(stop_price_ch_short), slTriggerBy="IndexPrice", slOrderType="Market", slSize=str(rounded_smartQuontity), positionIdx = 2)       
+                order = self.session.set_trading_stop(category = 'linear', symbol = self.symbol, takeProfit=str(take_price_ch_short), tpTriggerBy="IndexPrice", tpslMode="Partial", tpOrderType="Limit", tpSize=str(rounded_smartQuontity), tpLimitPrice = str(take_price_ch_short), positionIdx = 2)   
                 logging.info("%s. TP и SL успешно открыты в short", self.symbol)
         except Exception as e:
             logging.error(f"{self.symbol}. Не удалось создать TP и SL: {e}")
@@ -130,12 +130,12 @@ class CoinTrader:
             logging.info(f"{self.symbol} lower_band: {lower_band}, ema: {ema}, upper_band: {upper_band}")
             if lower_band is not None and upper_band is not None:
                 if not self.in_position:
-                    if current_close_price <= lower_band * 0.997:
+                    if current_close_price <= lower_band * 0.996:
                         self.create_order("LONG", candle['close'])
-                        logging.info(f"{self.symbol} Сигнал на покупку")
-                    elif current_close_price >= upper_band * 1.003:
+                        logging.info(f"{self.symbol} Сигнал на покупку lower_band: {lower_band}, ema: {ema}, upper_band: {upper_band}")
+                    elif current_close_price >= upper_band * 1.004:
                         self.create_order("SHORT", candle['close'])
-                        logging.info(f"{self.symbol} Сигнал на продажу")
+                        logging.info(f"{self.symbol} Сигнал на продажу lower_band: {lower_band}, ema: {ema}, upper_band: {upper_band}")
                     else:
                         logging.debug(f"{self.symbol} Условия не выполняются")
                 else:
@@ -164,7 +164,7 @@ class CoinTrader:
                     self.closing_prices.append(float(candle[4])) # close price
                     self.volumes.append(float(candle[5]))        # volume
                     self.turnovers.append(float(candle[6]))      # turnover
-                logging.info(f"{self.symbol} Исторические данные загружены.")
+                logging.info(f"{self.symbol} Исторические данные загружены")
         except Exception as e:
             logging.error(f"Ошибка загрузки исторических данных: {e}")
 
@@ -191,8 +191,8 @@ if __name__ == "__main__":
     with open('settings.json', 'r') as f:
         settings = json.load(f)
 
-    symbols = ['XRPUSDT', 'SOLUSDT', 'TRBUSDT', 'DOTUSDT', 'BTCUSDT', 'ETHUSDT', 'AVAXUSDT', 'MATICUSDT', 'ADAUSDT', 'APTUSDT']
-    # symbols = ['APTUSDT']
+    # symbols = ['XRPUSDT', 'SOLUSDT', 'TRBUSDT', 'DOTUSDT', 'BTCUSDT', 'ETHUSDT', 'AVAXUSDT', 'MATICUSDT', 'ADAUSDT', 'APTUSDT']
+    symbols = ['TRBUSDT']
 
     threads = []
     for symbol in symbols:
