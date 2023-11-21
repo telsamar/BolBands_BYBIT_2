@@ -152,51 +152,49 @@ class CoinTrader:
                     else:
                         logging.debug(f"{self.symbol} Условия не выполняются")
                 else:
-                    self.in_position, self.position_averaged = self.check_open_positions()
                     if self.in_position and not self.position_averaged:
                         self.open_more_position()
 
+                    is_new_position, is_new_averaged = self.check_open_positions()
+                    if not self.in_position:
+                        self.in_position = is_new_position
+                    if not self.position_averaged:
+                        self.position_averaged = is_new_averaged
+
     def check_open_positions(self):
         try:
-            response = self.session.get_open_orders(category='linear', symbol=self.symbol)
-            if response['retCode'] == 0 and response['result']:
-                untriggered_orders = [order for order in response['result']['list'] if order['orderStatus'] == 'Untriggered']
-                num_untriggered_orders = len(untriggered_orders)
+            response_orders = self.session.get_open_orders(category='linear', symbol=self.symbol, limit = 2)
+            response_positions = self.session.get_positions(category='linear', symbol=self.symbol, limit = 2)
 
-                if num_untriggered_orders == 0:
-                    return False, False
-                elif num_untriggered_orders == 1:
-                    return True, False
-                else:
-                    return True, True
+            if response_orders['retCode'] == 0 and response_orders['result']:
+                untriggered_orders = [order for order in response_orders['result']['list'] if order['orderStatus'] == 'Untriggered']
+                num_untriggered_orders = len(untriggered_orders)
             else:
+                logging.error(f"Ошибка при получении открытых ордеров: {response_orders['retMsg']}")
+                num_untriggered_orders = 0
+
+            if response_positions['retCode'] == 0 and response_positions['result']:
+                active_positions = [position for position in response_positions['result']['list'] if float(position['size']) > 0]
+                num_active_positions = len(active_positions)
+            else:
+                logging.error(f"Ошибка при получении активных позиций: {response_positions['retMsg']}")
+                num_active_positions = 0
+
+            if num_active_positions == 0 and num_untriggered_orders == 0:
                 return False, False
+            elif num_active_positions == 1 and num_untriggered_orders == 1:
+                return True, False
+            else:
+                return True, True
         except Exception as e:
-            logging.error(f"Ошибка при проверке открытых ордеров: {e}")
+            logging.error(f"Ошибка при проверке открытых позиций и ордеров: {e}")
             return None, None
 
     def open_more_position(self):
-        print("Окрываем усредняющую сделку)")
-        # try:
-        #     self.position_averaged = True
-        #     position_info = self.session.get_positions(category='linear', symbol=self.symbo, limit = 1)
-        #     if position_info['retCode'] == 0 and position_info['result']:
-        #         for current_position in position_info['result']['list']:
-        #             pnl = float(current_position['unrealisedPnl'])
-        #             position_value = float(current_position['positionValue']) / self.marzha
-        #             size = float(current_position['size']) / self.marzha
-        #             side = current_position['side']
-        #             procent = pnl / position_value
-
-        #             print(f"pnl {pnl} position_value {position_value} size {size} side {side} procent {procent}")
-
-        #             if procent < 0.5 and not self.position_averaged:
-        #                 # self.double_and_create_order(side, size)
-        #                 return True
-        #         return False
-        # except Exception as e:
-        #     logging.error(f"Ошибка при проверке и обновлении позиции: {e}")
-        #     return False
+        try:
+            logging.info("Тут будет работать система усреднения")
+        except Exception as e:
+            logging.error(f"Ошибка при усреднении позиции: {e}")
 
     def _load_historical_data(self, interval=1):
         try:
