@@ -33,6 +33,7 @@ class CoinTrader:
         self.volumes = deque(maxlen=self.period)
         self.turnovers = deque(maxlen=self.period)
         self.in_position = False
+        self.position_averaged = False
         self._setup_leverage()
         self._get_wallet_balance()
         self._load_historical_data()
@@ -151,19 +152,51 @@ class CoinTrader:
                     else:
                         logging.debug(f"{self.symbol} Условия не выполняются")
                 else:
-                    self.in_position = self.check_open_positions()
+                    self.in_position, self.position_averaged = self.check_open_positions()
+                    if self.in_position and not self.position_averaged:
+                        self.open_more_position()
 
     def check_open_positions(self):
         try:
-            response = self.session.get_positions(category='linear', symbol=self.symbol)
+            response = self.session.get_open_orders(category='linear', symbol=self.symbol)
             if response['retCode'] == 0 and response['result']:
-                if any(float(position['size']) > 0 for position in response['result']['list']):
-                    return True
+                untriggered_orders = [order for order in response['result']['list'] if order['orderStatus'] == 'Untriggered']
+                num_untriggered_orders = len(untriggered_orders)
+
+                if num_untriggered_orders == 0:
+                    return False, False
+                elif num_untriggered_orders == 1:
+                    return True, False
                 else:
-                    return False
+                    return True, True
+            else:
+                return False, False
         except Exception as e:
-            logging.error(f"Ошибка при проверке открытых позиций: {e}")
-            return None
+            logging.error(f"Ошибка при проверке открытых ордеров: {e}")
+            return None, None
+
+    def open_more_position(self):
+        print("Окрываем усредняющую сделку)")
+        # try:
+        #     self.position_averaged = True
+        #     position_info = self.session.get_positions(category='linear', symbol=self.symbo, limit = 1)
+        #     if position_info['retCode'] == 0 and position_info['result']:
+        #         for current_position in position_info['result']['list']:
+        #             pnl = float(current_position['unrealisedPnl'])
+        #             position_value = float(current_position['positionValue']) / self.marzha
+        #             size = float(current_position['size']) / self.marzha
+        #             side = current_position['side']
+        #             procent = pnl / position_value
+
+        #             print(f"pnl {pnl} position_value {position_value} size {size} side {side} procent {procent}")
+
+        #             if procent < 0.5 and not self.position_averaged:
+        #                 # self.double_and_create_order(side, size)
+        #                 return True
+        #         return False
+        # except Exception as e:
+        #     logging.error(f"Ошибка при проверке и обновлении позиции: {e}")
+        #     return False
 
     def _load_historical_data(self, interval=1):
         try:
@@ -204,7 +237,7 @@ if __name__ == "__main__":
         settings = json.load(f)
 
     symbols = ['XRPUSDT', 'TRBUSDT', 'DOTUSDT', 'BTCUSDT', 'ETHUSDT', 'AVAXUSDT', 'MATICUSDT', 'ADAUSDT', 'APTUSDT', 'BNBUSDT', 'LINKUSDT', 'LTCUSDT']
-    # symbols = ['TRBUSDT']
+    # symbols = ['ADAUSDT']
 
     threads = []
     for symbol in symbols:
