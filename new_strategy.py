@@ -8,6 +8,7 @@ import json
 from decimal import Decimal, getcontext
 import threading
 import logging
+import time
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s', filename='coin_trader.log', filemode='w', encoding='utf-8')
 
@@ -94,12 +95,20 @@ class CoinTrader:
         except Exception as e:
             logging.error("Произошла ошибка в выставлении заявки на покупку: %s", e)
 
-        try:
-            datay = self.session.get_order_history(category="linear", orderId = result.get('result', {}).get('orderId', None))
-            list_data = datay.get('result', {}).get('list', [])
-            if list_data:
-                new_price = float(list_data[0].get('avgPrice', 'Не найдено'))
+        time.sleep(0.5)
+
+        for attempt in range(5):
+            try:
+                datay = self.session.get_order_history(category="linear", orderId = result.get('result', {}).get('orderId', None))
+                list_data = datay.get('result', {}).get('list', [])
+                if not list_data:
+                    raise ValueError("Список истории заказов пуст")
+
+                new_price = float(list_data[0].get('avgPrice', 0))
+                if new_price == 0:
+                    raise ValueError("Не удалось получить среднюю цену")
                 logging.info(f'{self.symbol}. Средняя цена открытой рыночной сделки: {new_price}')
+
                 if side == 'LONG':
                     take_price_ch_long = dynamic_round((new_price + (self.take * new_price) / (self.marzha * 100)), ord_step_num)
                     stop_price_ch_long = dynamic_round((new_price - (self.stop * new_price) / (self.marzha * 100)), ord_step_num)
@@ -110,20 +119,12 @@ class CoinTrader:
                     stop_price_ch_short = dynamic_round((new_price + (self.stop * new_price) / (self.marzha * 100)), ord_step_num)         
                     order = self.session.set_trading_stop(category = 'linear', symbol = self.symbol, takeProfit=str(take_price_ch_short), tpTriggerBy="MarkPrice", tpslMode="Partial", tpOrderType="Limit", tpSize=str(rounded_smartQuontity), tpLimitPrice = str(take_price_ch_short), positionIdx = 2)   
                     logging.info("%s. TP и SL успешно открыты в short", self.symbol)
-            else:
-                logging.error(f"{self.symbol}. Список заказов пуст. ")
-                if side == 'LONG':
-                    take_price_ch_long = dynamic_round((open_price + (self.take * open_price) / (self.marzha * 100)), ord_step_num)
-                    stop_price_ch_long = dynamic_round((open_price - (self.stop * open_price) / (self.marzha * 100)), ord_step_num)
-                    order = self.session.set_trading_stop(category = 'linear', symbol = self.symbol, takeProfit=str(take_price_ch_long), tpTriggerBy="MarkPrice", tpslMode="Partial", tpOrderType="Limit", tpSize=str(rounded_smartQuontity), tpLimitPrice = str(take_price_ch_long), positionIdx = 1)
-                    logging.info("%s. TP и SL АЛЬТЕРНАТИВНО открыты в long", self.symbol)
-                elif side == 'SHORT':
-                    take_price_ch_short = dynamic_round((open_price - (self.take * open_price) / (self.marzha * 100)), ord_step_num)
-                    stop_price_ch_short = dynamic_round((open_price + (self.stop * open_price) / (self.marzha * 100)), ord_step_num)         
-                    order = self.session.set_trading_stop(category = 'linear', symbol = self.symbol, takeProfit=str(take_price_ch_short), tpTriggerBy="MarkPrice", tpslMode="Partial", tpOrderType="Limit", tpSize=str(rounded_smartQuontity), tpLimitPrice = str(take_price_ch_short), positionIdx = 2)   
-                    logging.info("%s. TP и SL АЛЬТЕРНАТИВНО открыты в short", self.symbol)
-        except Exception as e:
-            logging.error(f"{self.symbol}. Не удалось создать TP и SL: {e}")
+                break
+            except Exception as e:
+                logging.error(f"Попытка {attempt + 1} - Ошибка при установлении TP и SL: {e}")
+                if attempt == 4:
+                    logging.error("Не удалось установить TP и SL после 5 попыток")
+                time.sleep(1)
 
     def handle_message(self, message):
         if 'data' in message and len(message['data']) > 0:
@@ -141,10 +142,10 @@ class CoinTrader:
             lower_band, ema, upper_band = self.calculate_bollinger_bands(list(self.closing_prices) + [current_close_price])
             if lower_band is not None and upper_band is not None:
                 if not self.in_position:
-                    if current_close_price <= lower_band * 0.995:
+                    if current_close_price <= lower_band * 0.993:
                         self.create_order("LONG", candle['close'])
                         logging.info(f"{self.symbol} Сигнал на покупку lower_band: {lower_band}, ema: {ema}, upper_band: {upper_band}")
-                    elif current_close_price >= upper_band * 1.005:
+                    elif current_close_price >= upper_band * 1.007:
                         self.create_order("SHORT", candle['close'])
                         logging.info(f"{self.symbol} Сигнал на продажу lower_band: {lower_band}, ema: {ema}, upper_band: {upper_band}")
                     else:
