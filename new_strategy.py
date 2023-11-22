@@ -33,7 +33,6 @@ class CoinTrader:
         self.volumes = deque(maxlen=self.period)
         self.turnovers = deque(maxlen=self.period)
         self.in_position = False
-        self.position_averaged = False
         self._setup_leverage()
         self._get_wallet_balance()
         self._load_historical_data()
@@ -143,56 +142,35 @@ class CoinTrader:
             lower_band, ema, upper_band = self.calculate_bollinger_bands(list(self.closing_prices) + [current_close_price])
             if lower_band is not None and upper_band is not None:
                 if not self.in_position:
-                    if current_close_price <= lower_band * 0.993:
+                    if current_close_price <= lower_band * 0.995:
                         self.create_order("LONG", candle['close'])
                         logging.info(f"{self.symbol} Сигнал на покупку lower_band: {lower_band}, ema: {ema}, upper_band: {upper_band}")
-                    elif current_close_price >= upper_band * 1.007:
+                    elif current_close_price >= upper_band * 1.005:
                         self.create_order("SHORT", candle['close'])
                         logging.info(f"{self.symbol} Сигнал на продажу lower_band: {lower_band}, ema: {ema}, upper_band: {upper_band}")
                     else:
                         logging.debug(f"{self.symbol} Условия не выполняются")
                 else:
-                    if self.in_position and not self.position_averaged:
-                        self.open_more_position()
-
-                    is_new_position, is_new_averaged = self.check_open_positions()
-                    if not self.in_position:
-                        self.in_position = is_new_position
-                    if not self.position_averaged:
-                        self.position_averaged = is_new_averaged
+                    self.in_position = self.check_open_positions()
+                    if self.in_position:
+                        logging.info(f"{self.symbol} Позиция открыта, ожидание усредняющей сделки")
+                        open_more_position()
 
     def check_open_positions(self):
         try:
-            response_orders = self.session.get_open_orders(category='linear', symbol=self.symbol, limit = 2)
-            response_positions = self.session.get_positions(category='linear', symbol=self.symbol, limit = 2)
-
-            if response_orders['retCode'] == 0 and response_orders['result']:
-                untriggered_orders = [order for order in response_orders['result']['list'] if order['orderStatus'] == 'Untriggered']
-                num_untriggered_orders = len(untriggered_orders)
-            else:
-                logging.error(f"Ошибка при получении открытых ордеров: {response_orders['retMsg']}")
-                num_untriggered_orders = 0
-
-            if response_positions['retCode'] == 0 and response_positions['result']:
-                active_positions = [position for position in response_positions['result']['list'] if float(position['size']) > 0]
-                num_active_positions = len(active_positions)
-            else:
-                logging.error(f"Ошибка при получении активных позиций: {response_positions['retMsg']}")
-                num_active_positions = 0
-
-            if num_active_positions == 0 and num_untriggered_orders == 0:
-                return False, False
-            elif num_active_positions == 1 and num_untriggered_orders == 1:
-                return True, False
-            else:
-                return True, True
+            response = self.session.get_positions(category='linear', symbol=self.symbol)
+            if response['retCode'] == 0 and response['result']:
+                if any(float(position['size']) > 0 for position in response['result']['list']):
+                    return True
+                else:
+                    return False
         except Exception as e:
-            logging.error(f"Ошибка при проверке открытых позиций и ордеров: {e}")
-            return None, None
+            logging.error(f"Ошибка при проверке открытых позиций: {e}")
+            return None
 
     def open_more_position(self):
         try:
-            logging.info("Тут будет работать система усреднения")
+            logging.info(f"{self.symbol} Тут будет работать система усреднения")
         except Exception as e:
             logging.error(f"Ошибка при усреднении позиции: {e}")
 
