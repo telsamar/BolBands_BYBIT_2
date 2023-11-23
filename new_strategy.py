@@ -33,6 +33,7 @@ class CoinTrader:
         self.volumes = deque(maxlen=self.period)
         self.turnovers = deque(maxlen=self.period)
         self.in_position = False
+        self.in_second_position = False
         self._setup_leverage()
         self._get_wallet_balance()
         self._load_historical_data()
@@ -154,7 +155,10 @@ class CoinTrader:
                     self.in_position = self.check_open_positions()
                     if self.in_position:
                         logging.info(f"{self.symbol} Позиция открыта, ожидание усредняющей сделки")
-                        open_more_position()
+                        # open_second_position()
+                        # self.in_second_position = self.check_open_second_positions() 
+                        # if self.in_second_position:
+                        #     logging.info(f"{self.symbol} Открыта начальная позиция и усредняющая")
 
     def check_open_positions(self):
         try:
@@ -167,10 +171,35 @@ class CoinTrader:
         except Exception as e:
             logging.error(f"Ошибка при проверке открытых позиций: {e}")
             return None
+        
+    def check_open_second_positions(self):
+        try:
+            response = self.session.get_positions(category='linear', symbol=self.symbol)
+            if response['retCode'] == 0 and response['result']:
+                active_positions = [position for position in response['result']['list'] if float(position['size']) > 0]
+                return len(active_positions) == 2
+            else:
+                return False
+        except Exception as e:
+            logging.error(f"Ошибка при проверке открытых позиций: {e}")
+            return False
 
-    def open_more_position(self):
+    def open_second_position(self):
         try:
             logging.info(f"{self.symbol} Тут будет работать система усреднения")
+            response = self.session.get_positions(category='linear', symbol=self.symbol, limit=1)
+            if response['retCode'] != 0 or not response['result']:
+                logging.error(f"Не удалось получить текущую позицию: {response.get('retMsg', 'Unknown Error')}")
+                return
+            
+            current_position = response['result']['list'][0]
+            size = float(current_position['size'])
+            avg_price = float(current_position['avgPrice'])
+            side = current_position['side']
+
+            # если нынешний пнл по позиции = -25% , то нужно открывать позицию в аналогичной стороне
+            # открываем сделку ценой равной self.cash, размер и все остальное считается автоматически, учитываем self.marzha
+            # прописываем механизм тейка на self.take * 2
         except Exception as e:
             logging.error(f"Ошибка при усреднении позиции: {e}")
 
