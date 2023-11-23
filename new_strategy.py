@@ -153,12 +153,11 @@ class CoinTrader:
                         logging.debug(f"{self.symbol} Условия не выполняются")
                 else:
                     self.in_position = self.check_open_positions()
-                    if self.in_position:
-                        logging.info(f"{self.symbol} Позиция открыта, ожидание усредняющей сделки")
-                        # open_second_position()
-                        # self.in_second_position = self.check_open_second_positions() 
-                        # if self.in_second_position:
-                        #     logging.info(f"{self.symbol} Открыта начальная позиция и усредняющая")
+                    try:
+                        if self.in_position:
+                            open_second_position()
+                    except Exception as e:
+                        logging.error(f"Ошибка при открытии усредняющей сделки: {e}")
 
     def check_open_positions(self):
         try:
@@ -172,22 +171,9 @@ class CoinTrader:
             logging.error(f"Ошибка при проверке открытых позиций: {e}")
             return None
         
-    def check_open_second_positions(self):
-        try:
-            response = self.session.get_positions(category='linear', symbol=self.symbol)
-            if response['retCode'] == 0 and response['result']:
-                active_positions = [position for position in response['result']['list'] if float(position['size']) > 0]
-                return len(active_positions) == 2
-            else:
-                return False
-        except Exception as e:
-            logging.error(f"Ошибка при проверке открытых позиций: {e}")
-            return False
-
     def open_second_position(self):
         try:
-            logging.info(f"{self.symbol} Тут будет работать система усреднения")
-            response = self.session.get_positions(category='linear', symbol=self.symbol, limit=1)
+            response = self.session.get_positions(category='linear', symbol=self.symbol)
             if response['retCode'] != 0 or not response['result']:
                 logging.error(f"Не удалось получить текущую позицию: {response.get('retMsg', 'Unknown Error')}")
                 return
@@ -196,10 +182,30 @@ class CoinTrader:
             size = float(current_position['size'])
             avg_price = float(current_position['avgPrice'])
             side = current_position['side']
+            unrealised_pnl = float(current_position['unrealisedPnl'])
+            position_value = size * avg_price
 
-            # если нынешний пнл по позиции = -25% , то нужно открывать позицию в аналогичной стороне
-            # открываем сделку ценой равной self.cash, размер и все остальное считается автоматически, учитываем self.marzha
-            # прописываем механизм тейка на self.take * 2
+            logging.info(f"current_position {current_position} size {size}, avg_price {avg_price} side {side} unrealised_pnl {unrealised_pnl} position_value {position_value}")
+
+            # if unrealised_pnl / position_value <= -0.25:
+            #     new_size = self.cash * self.marzha / avg_price
+
+            #     result = self.session.place_order(category='linear', symbol=self.symbol, side=side, 
+            #                                     orderType='Market', qty=new_size, isLeverage=1, 
+            #                                     positionIdx=1 if side == 'Buy' else 2)
+            #     logging.info(f"{self.symbol}. Усредненная позиция открыта")
+
+            #     new_take_profit = (avg_price * (1 + 2 * self.take / 100)) if side == 'Buy' else (avg_price * (1 - 2 * self.take / 100))
+            #     take_profit_order = self.session.set_trading_stop(category='linear', symbol=self.symbol, 
+            #                                                     takeProfit=str(new_take_profit), tpTriggerBy="MarkPrice", 
+            #                                                     tpslMode="Partial", tpOrderType="Limit", 
+            #                                                     tpSize=str(new_size), tpLimitPrice=str(new_take_profit), 
+            #                                                     positionIdx=1 if side == 'Buy' else 2)
+            #     logging.info(f"{self.symbol}. Новый тейк-профит установлен на уровне {new_take_profit}")
+
+            # else:
+            #     logging.debug(f"{self.symbol} Условия для усреднения не выполнены")
+
         except Exception as e:
             logging.error(f"Ошибка при усреднении позиции: {e}")
 
