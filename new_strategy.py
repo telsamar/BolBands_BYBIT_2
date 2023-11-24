@@ -154,8 +154,9 @@ class CoinTrader:
                 else:
                     self.in_position = self.check_open_positions()
                     try:
-                        if self.in_position:
-                            open_second_position()
+                        self.in_second_position = self.check_second_positions()
+                        if not self.in_second_position:
+                            self.open_second_position()
                     except Exception as e:
                         logging.error(f"Ошибка при открытии усредняющей сделки: {e}")
 
@@ -170,42 +171,88 @@ class CoinTrader:
         except Exception as e:
             logging.error(f"Ошибка при проверке открытых позиций: {e}")
             return None
-        
+
+    def check_second_positions(self):
+        try:
+            response = self.session.get_positions(category='linear', symbol=self.symbol)
+            if response['retCode'] == 0 and response['result']:
+                active_positions = [position for position in response['result']['list'] if float(position['size']) > 0]
+                num_active_positions = len(active_positions)
+                return num_active_positions >= 2
+            else:
+                return False
+        except Exception as e:
+            logging.error(f"Ошибка при проверке открытых позиций: {e}")
+            return False
+
     def open_second_position(self):
+        self.in_second_position = True
         try:
             response = self.session.get_positions(category='linear', symbol=self.symbol)
             if response['retCode'] != 0 or not response['result']:
                 logging.error(f"Не удалось получить текущую позицию: {response.get('retMsg', 'Unknown Error')}")
                 return
             
+            def dynamic_round(number, step_size):
+                getcontext().prec = 10
+                number = Decimal(str(number))
+                step_size = Decimal(str(step_size))
+                decimal_places = len(str(step_size).split(".")[1]) if "." in str(step_size) else 0
+
+                rounded_number = (number // step_size) * step_size
+                return rounded_number.quantize(Decimal(10) ** -decimal_places)
+            
+            dataz = self.session.get_instruments_info(category="linear", symbol=self.symbol)
+            ord_step = dataz['result']['list'][0]['priceFilter']['tickSize']
+            ord_step_num = float(ord_step)
+
             current_position = response['result']['list'][0]
             size = float(current_position['size'])
-            avg_price = float(current_position['avgPrice'])
             side = current_position['side']
             unrealised_pnl = float(current_position['unrealisedPnl'])
-            position_value = size * avg_price
+            position_value = size * float(current_position['avgPrice'])
 
-            logging.info(f"current_position {current_position} size {size}, avg_price {avg_price} side {side} unrealised_pnl {unrealised_pnl} position_value {position_value}")
+            if unrealised_pnl * self.marzha / position_value  <= -30:
+                try:
+                    result = self.session.place_order(category='linear', symbol=self.symbol, side=side, 
+                                                orderType='Market', qty=size, isLeverage=1, 
+                                                positionIdx=1 if side == 'Buy' else 2)
+                    logging.info(f"{self.symbol}. Усредненная позиция открыта")
+                except Exception as e:
+                    logging.error("Произошла ошибка в выставлении УСРЕДНЯЮЩЕЙ сделки: %s", e)
+                
+                time.sleep(0.5)
 
-            # if unrealised_pnl / position_value <= -0.25:
-            #     new_size = self.cash * self.marzha / avg_price
+                for attempt in range(5):
+                    try:
+                        datay = self.session.get_order_history(category="linear", orderId=result.get('result', {}).get('orderId', None))
+                        list_data = datay.get('result', {}).get('list', [])
+                        if not list_data:
+                            raise ValueError("Список истории заказов пуст усредняющей сделки")
 
-            #     result = self.session.place_order(category='linear', symbol=self.symbol, side=side, 
-            #                                     orderType='Market', qty=new_size, isLeverage=1, 
-            #                                     positionIdx=1 if side == 'Buy' else 2)
-            #     logging.info(f"{self.symbol}. Усредненная позиция открыта")
+                        new_avg_price = float(list_data[0].get('avgPrice', 0))
+                        if new_avg_price == 0:
+                            raise ValueError("Не удалось получить среднюю цену усредняющей сделки")
+                        logging.info(f'{self.symbol}. Средняя цена открытой усредняющей сделки: {new_avg_price}')
 
-            #     new_take_profit = (avg_price * (1 + 2 * self.take / 100)) if side == 'Buy' else (avg_price * (1 - 2 * self.take / 100))
-            #     take_profit_order = self.session.set_trading_stop(category='linear', symbol=self.symbol, 
-            #                                                     takeProfit=str(new_take_profit), tpTriggerBy="MarkPrice", 
-            #                                                     tpslMode="Partial", tpOrderType="Limit", 
-            #                                                     tpSize=str(new_size), tpLimitPrice=str(new_take_profit), 
-            #                                                     positionIdx=1 if side == 'Buy' else 2)
-            #     logging.info(f"{self.symbol}. Новый тейк-профит установлен на уровне {new_take_profit}")
+                        take_price_ch_long = dynamic_round((new_avg_price + (2 * self.take * new_avg_price) / (self.marzha * 100)), ord_step_num)
+                        take_price_ch_short = dynamic_round((new_avg_price - (2 * self.take * new_avg_price) / (self.marzha * 100)), ord_step_num)
 
-            # else:
-            #     logging.debug(f"{self.symbol} Условия для усреднения не выполнены")
+                        self.session.set_trading_stop(category='linear', symbol=self.symbol, 
+                                                    takeProfit=str(take_price_ch_long) if side == 'Buy' else str(take_price_ch_short), 
+                                                    tpTriggerBy="MarkPrice", 
+                                                    tpslMode="Partial", tpOrderType="Limit", 
+                                                    tpSize=str(size), tpLimitPrice=str(take_price_ch_long) if side == 'Buy' else str(take_price_ch_short), 
+                                                    positionIdx=1 if side == 'Buy' else 2)
+                        logging.info(f"{self.symbol}. Тейк-профит усредняющей сделки установлен на уровне {str(take_price_ch_long) if side == 'Buy' else str(take_price_ch_short)}")
 
+                    except Exception as e:
+                        logging.error(f"Попытка {attempt + 1} - Ошибка при установлении TP и SL усредняющей сделки: {e}")
+                        if attempt == 4:
+                            logging.error("Не удалось установить TP и SL усредняющей сделки после 5 попыток")
+                        time.sleep(1)
+            else:
+                logging.debug(f"{self.symbol} Условия для усреднения не выполнены")
         except Exception as e:
             logging.error(f"Ошибка при усреднении позиции: {e}")
 
@@ -248,7 +295,7 @@ if __name__ == "__main__":
         settings = json.load(f)
 
     symbols = ['XRPUSDT', 'TRBUSDT', 'DOTUSDT', 'BTCUSDT', 'ETHUSDT', 'AVAXUSDT', 'MATICUSDT', 'ADAUSDT', 'APTUSDT', 'BNBUSDT', 'LINKUSDT', 'LTCUSDT']
-    # symbols = ['ADAUSDT']
+    # symbols = ['BTCUSDT']
 
     threads = []
     for symbol in symbols:
