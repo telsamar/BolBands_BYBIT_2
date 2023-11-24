@@ -213,44 +213,44 @@ class CoinTrader:
             position_value = size * float(current_position['avgPrice'])
 
             if unrealised_pnl * self.marzha / position_value  <= -30:
-                try:
-                    result = self.session.place_order(category='linear', symbol=self.symbol, side=side, 
-                                                orderType='Market', qty=size, isLeverage=1, 
-                                                positionIdx=1 if side == 'Buy' else 2)
-                    logging.info(f"{self.symbol}. Усредненная позиция открыта")
-                except Exception as e:
-                    logging.error("Произошла ошибка в выставлении УСРЕДНЯЮЩЕЙ сделки: %s", e)
+                logging.info(f"side {side} unrealised_pnl * self.marzha / position_value {unrealised_pnl * self.marzha / position_value}")
+                # try:
+                #     result = self.session.place_order(category='linear', symbol=self.symbol, side=side, 
+                #                                 orderType='Market', qty=size, isLeverage=1, 
+                #                                 positionIdx=1 if side == 'Buy' else 2)
+                #     logging.info(f"{self.symbol}. Усредненная позиция открыта")
+                # except Exception as e:
+                #     logging.error("Произошла ошибка в выставлении УСРЕДНЯЮЩЕЙ сделки: %s", e)
                 
-                time.sleep(0.5)
+                # time.sleep(0.5)
 
-                for attempt in range(5):
-                    try:
-                        datay = self.session.get_order_history(category="linear", orderId=result.get('result', {}).get('orderId', None))
-                        list_data = datay.get('result', {}).get('list', [])
-                        if not list_data:
-                            raise ValueError("Список истории заказов пуст усредняющей сделки")
+                # for attempt in range(5):
+                #     try:
+                #         datay = self.session.get_order_history(category="linear", orderId=result.get('result', {}).get('orderId', None))
+                #         list_data = datay.get('result', {}).get('list', [])
+                #         if not list_data:
+                #             raise ValueError("Список истории заказов пуст усредняющей сделки")
 
-                        new_avg_price = float(list_data[0].get('avgPrice', 0))
-                        if new_avg_price == 0:
-                            raise ValueError("Не удалось получить среднюю цену усредняющей сделки")
-                        logging.info(f'{self.symbol}. Средняя цена открытой усредняющей сделки: {new_avg_price}')
+                #         new_avg_price = float(list_data[0].get('avgPrice', 0))
+                #         if new_avg_price == 0:
+                #             raise ValueError("Не удалось получить среднюю цену усредняющей сделки")
+                #         logging.info(f'{self.symbol}. Средняя цена открытой усредняющей сделки: {new_avg_price}')
 
-                        take_price_ch_long = dynamic_round((new_avg_price + (2 * self.take * new_avg_price) / (self.marzha * 100)), ord_step_num)
-                        take_price_ch_short = dynamic_round((new_avg_price - (2 * self.take * new_avg_price) / (self.marzha * 100)), ord_step_num)
+                #         take_price_ch_long = dynamic_round((new_avg_price + (2 * self.take * new_avg_price) / (self.marzha * 100)), ord_step_num)
+                #         take_price_ch_short = dynamic_round((new_avg_price - (2 * self.take * new_avg_price) / (self.marzha * 100)), ord_step_num)
 
-                        self.session.set_trading_stop(category='linear', symbol=self.symbol, 
-                                                    takeProfit=str(take_price_ch_long) if side == 'Buy' else str(take_price_ch_short), 
-                                                    tpTriggerBy="MarkPrice", 
-                                                    tpslMode="Partial", tpOrderType="Limit", 
-                                                    tpSize=str(size), tpLimitPrice=str(take_price_ch_long) if side == 'Buy' else str(take_price_ch_short), 
-                                                    positionIdx=1 if side == 'Buy' else 2)
-                        logging.info(f"{self.symbol}. Тейк-профит усредняющей сделки установлен на уровне {str(take_price_ch_long) if side == 'Buy' else str(take_price_ch_short)}")
-
-                    except Exception as e:
-                        logging.error(f"Попытка {attempt + 1} - Ошибка при установлении TP и SL усредняющей сделки: {e}")
-                        if attempt == 4:
-                            logging.error("Не удалось установить TP и SL усредняющей сделки после 5 попыток")
-                        time.sleep(1)
+                #         self.session.set_trading_stop(category='linear', symbol=self.symbol, 
+                #                                     takeProfit=str(take_price_ch_long) if side == 'Buy' else str(take_price_ch_short), 
+                #                                     tpTriggerBy="MarkPrice", 
+                #                                     tpslMode="Partial", tpOrderType="Limit", 
+                #                                     tpSize=str(size), tpLimitPrice=str(take_price_ch_long) if side == 'Buy' else str(take_price_ch_short), 
+                #                                     positionIdx=1 if side == 'Buy' else 2)
+                #         logging.info(f"{self.symbol}. Тейк-профит усредняющей сделки установлен на уровне {str(take_price_ch_long) if side == 'Buy' else str(take_price_ch_short)}")
+                #     except Exception as e:
+                #         logging.error(f"Попытка {attempt + 1} - Ошибка при установлении TP и SL усредняющей сделки: {e}")
+                #         if attempt == 4:
+                #             logging.error("Не удалось установить TP и SL усредняющей сделки после 5 попыток")
+                #         time.sleep(1)
             else:
                 logging.debug(f"{self.symbol} Условия для усреднения не выполнены")
         except Exception as e:
