@@ -153,12 +153,12 @@ class CoinTrader:
                         logging.debug(f"{self.symbol} Условия не выполняются")
                 else:
                     self.in_position = self.check_open_positions()
-                    try:
-                        self.in_second_position = self.check_second_positions()
-                        if not self.in_second_position:
-                            self.open_second_position()
-                    except Exception as e:
-                        logging.error(f"Ошибка при открытии усредняющей сделки: {e}")
+                    # try:
+                    #     self.in_second_position = self.check_second_positions()
+                    #     if not self.in_second_position:
+                    #         self.open_second_position()
+                    # except Exception as e:
+                    #     logging.error(f"Ошибка при открытии усредняющей сделки: {e}")
 
     def check_open_positions(self):
         try:
