@@ -25,7 +25,7 @@ class CoinTrader:
         self.take = float(settings["take"])
         self.stop = float(settings["stop"])
         self.period = 90
-        self.multiplier = 2
+        self.multiplier = 4
         self.closing_prices = deque(maxlen=self.period)
         self.open_prices = deque(maxlen=self.period)
         self.high_prices = deque(maxlen=self.period)
@@ -37,6 +37,7 @@ class CoinTrader:
         self._setup_leverage()
         self._get_wallet_balance()
         self._load_historical_data()
+        self.pribil = 0
 
     def _setup_leverage(self):
         try:
@@ -143,10 +144,10 @@ class CoinTrader:
             lower_band, ema, upper_band = self.calculate_bollinger_bands(list(self.closing_prices) + [current_close_price])
             if lower_band is not None and upper_band is not None:
                 if not self.in_position:
-                    if current_close_price <= lower_band * 0.993:
+                    if current_close_price <= lower_band * (1 - self.pribil):
                         self.create_order("LONG", candle['close'])
                         logging.info(f"{self.symbol} Сигнал на покупку lower_band: {lower_band}, ema: {ema}, upper_band: {upper_band}")
-                    elif current_close_price >= upper_band * 1.007: 
+                    elif current_close_price >= upper_band * (1 + self.pribil): 
                         self.create_order("SHORT", candle['close'])
                         logging.info(f"{self.symbol} Сигнал на продажу lower_band: {lower_band}, ema: {ema}, upper_band: {upper_band}")
                     else:
@@ -206,7 +207,8 @@ if __name__ == "__main__":
 
     symbols = ['SOLUSDT', 'LINKUSDT', 'SUSHIUSDT', 'BNBUSDT', 'AVAXUSDT', 'UNIUSDT', 'YFIUSDT', 'AXSUSDT',
                 'MATICUSDT', 'ARBUSDT', 'GALAUSDT', 'AAVEUSDT', 'FTMUSDT', 'ENJUSDT', 'COMPUSDT', 'TONUSDT',
-                 'XRPUSDT', 'ADAUSDT', 'TRXUSDT', 'HBARUSDT']
+                'XRPUSDT', 'ADAUSDT', 'TRXUSDT', 'HBARUSDT', 'TRBUSDT', 'DOTUSDT', 'APTUSDT', 'LTCUSDT']
+    
     # symbols = ['BTCUSDT']
 
     threads = []
