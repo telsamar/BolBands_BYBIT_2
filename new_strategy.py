@@ -25,7 +25,7 @@ class CoinTrader:
         self.take = float(settings["take"])
         self.stop = float(settings["stop"])
         self.period = 120
-        self.multiplier = 3
+        self.multiplier = 4
         self.closing_prices = deque(maxlen=self.period)
         self.open_prices = deque(maxlen=self.period)
         self.high_prices = deque(maxlen=self.period)
@@ -206,7 +206,7 @@ if __name__ == "__main__":
         settings = json.load(f)
 
     symbols = ['SOLUSDT', 'LINKUSDT', 'BNBUSDT', 'UNIUSDT', 'YFIUSDT', 'AXSUSDT',
-                'MATICUSDT', 'ARBUSDT', 'GALAUSDT', 'ENJUSDT', 'COMPUSDT', 'TONUSDT',
+                'MATICUSDT', 'ARBUSDT', 'GALAUSDT', 'COMPUSDT', 'NEARUSDT', 'APEUSDT',
                 'XRPUSDT', 'ADAUSDT', 'TRXUSDT', 'TRBUSDT', 'DOTUSDT', 'APTUSDT']
     
     # symbols = ['BTCUSDT']
