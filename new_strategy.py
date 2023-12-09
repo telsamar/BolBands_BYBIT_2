@@ -12,6 +12,22 @@ import time
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s', filename='coin_trader.log', filemode='w', encoding='utf-8')
 
+multipliers = {
+    'SOLUSDT': 6,
+    'LINKUSDT': 6.5,
+    'BNBUSDT': 5.5,
+    'AXSUSDT': 5.5,
+    'MATICUSDT': 5.5, 
+    'GALAUSDT': 5.5, 
+    'ORDIUSDT': 6, 
+    'APEUSDT': 5.5,
+    'XRPUSDT': 5.5, 
+    'ADAUSDT': 5.5, 
+    'DOGEUSDT': 5.5, 
+    'TRBUSDT': 5.5, 
+    'DOTUSDT': 5.5,
+}
+
 class CoinTrader:
     def __init__(self, symbol, settings):
         self.symbol = symbol
@@ -25,7 +41,7 @@ class CoinTrader:
         self.take = float(settings["take"])
         self.stop = float(settings["stop"])
         self.period = 60
-        self.multiplier = 5     
+        self.multiplier = multipliers.get(symbol, 7)
         self.closing_prices = deque(maxlen=self.period)
         self.open_prices = deque(maxlen=self.period)
         self.high_prices = deque(maxlen=self.period)
@@ -37,11 +53,11 @@ class CoinTrader:
         self._setup_leverage()
         self._get_wallet_balance()
         self._load_historical_data()
-        self.pribil = 0
 
     def _setup_leverage(self):
         try:
             self.session.switch_position_mode(category = 'linear', symbol=self.symbol, mode=3)
+            self.session.set_leverage(category = 'linear', symbol=self.symbol, buyLeverage=str(self.marzha), sellLeverage=str(self.marzha))
             self.session.switch_margin_mode(category = 'linear', symbol=self.symbol, tradeMode = 0, buyLeverage=str(self.marzha), sellLeverage=str(self.marzha))
         except Exception as e:
             logging.debug("Произошла ошибка в установке маржи или мода: %s", e)
@@ -146,10 +162,10 @@ class CoinTrader:
             lower_band, ema, upper_band = self.calculate_bollinger_bands(list(self.closing_prices) + [current_close_price])
             if lower_band is not None and upper_band is not None:
                 if not self.in_position:
-                    if current_close_price <= lower_band * (1 - self.pribil):
+                    if current_close_price <= lower_band:
                         self.create_order("LONG", candle['close'])
                         logging.info(f"{self.symbol} Сигнал на покупку lower_band: {lower_band}, ema: {ema}, upper_band: {upper_band}")
-                    elif current_close_price >= upper_band * (1 + self.pribil): 
+                    elif current_close_price >= upper_band: 
                         self.create_order("SHORT", candle['close'])
                         logging.info(f"{self.symbol} Сигнал на продажу lower_band: {lower_band}, ema: {ema}, upper_band: {upper_band}")
                     else:
@@ -207,9 +223,7 @@ if __name__ == "__main__":
     with open('settings.json', 'r') as f:
         settings = json.load(f)
 
-    symbols = ['SOLUSDT', 'LINKUSDT', 'BNBUSDT', 'UNIUSDT', 'YFIUSDT', 'AXSUSDT',
-                'MATICUSDT', 'ARBUSDT', 'GALAUSDT', 'COMPUSDT', 'NEARUSDT', 'APEUSDT',
-                'XRPUSDT', 'ADAUSDT', 'TRXUSDT', 'TRBUSDT', 'DOTUSDT', 'APTUSDT']
+    symbols = ['SOLUSDT', 'LINKUSDT', 'BNBUSDT', 'AXSUSDT', 'MATICUSDT', 'GALAUSDT', 'ORDIUSDT', 'APEUSDT', 'XRPUSDT', 'ADAUSDT', 'DOGEUSDT', 'TRBUSDT', 'DOTUSDT']
     
     # symbols = ['BTCUSDT']
 
