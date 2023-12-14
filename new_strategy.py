@@ -13,23 +13,23 @@ import time
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s', filename='coin_trader.log', filemode='w', encoding='utf-8')
 
 multipliers = {
-    'BNBUSDT': 2.5,
     'GALAUSDT': 3, 
     'ORDIUSDT': 5, 
     'AXSUSDT': 4,
     'DOTUSDT': 5,
     'APEUSDT': 4,
 
-    'SOLUSDT': 3.7,
     'LINKUSDT': 5.5,
     'MATICUSDT': 3.7, 
     'ADAUSDT': 4.5,
-    
+
+    'SOLUSDT': 4,
+    'BNBUSDT': 3,
     'TRBUSDT': 6, 
     'XRPUSDT': 3.5, 
-    'DOGEUSDT': 2.5, 
+    'DOGEUSDT': 3, 
 }
-# с 19:00 14.12
+# с 01:00 15.12
 
 class CoinTrader:
     def __init__(self, symbol, settings):
