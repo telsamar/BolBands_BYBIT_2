@@ -13,23 +13,23 @@ import time
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s', filename='coin_trader.log', filemode='w', encoding='utf-8')
 
 multipliers = {
-    'LINKUSDT': 5.5,  # 6
-    'MATICUSDT': 3.7, # 2
-    'ADAUSDT': 4.5,   # 2
-    'AXSUSDT': 4,     # 1
-    'XRPUSDT': 3.5,   # 1
+    'ORDIUSDT': 5.5,  # 6 | 0 | 5 -> 5.5 (6/0)
 
-    'DOTUSDT': 4.7,   # 5 -> 4.7
-    'APEUSDT': 3.7,   # 4 -> 3.7
-    'SOLUSDT': 3.7,   # 4 -> 3.7
-    'TRBUSDT': 5.7,   # 6 -> 5.7
-    
-    'GALAUSDT': 3.3,  # 3 | 3 -> 3.3
-    'BNBUSDT': 3.3,   # 3 | 3 -> 3.3
-    'ORDIUSDT': 5.5,  # 2 | 5 -> 5.5
-    'DOGEUSDT': 3.8,  # 2 | 3 -> 3.8
+    'ADAUSDT': 4.3,   # 12 | 1 | 4.5 (12/1) -> 4.3 
+    'LINKUSDT': 5.3,  # 11 | 1 | 5.5 (11/1) -> 5.3
+    'XRPUSDT': 3.3,   # 6 | 1 | 3.5 (6/1) -> 3.3
+    'DOTUSDT': 4.3,   # 5 | 1 | 5 -> 4.7 (5/1) -> 4.3
+    'SOLUSDT': 3.3,   # 5 | 1 | 4 -> 3.7 (5/1) -> 3.3
+    'MATICUSDT': 3.2,   # 2 | 1 | 3.7 (2/1) -> 3.2
+    'APEUSDT': 3,   # 1 | 1 | 4 -> 3.7 (1/1) -> 3
+    'BNBUSDT': 2.7 ,   # 1 | 1 | 3 -> 3.3 (1/1) -> 2.7
+    'DOGEUSDT': 3.3,  # 1 | 1 | 3 -> 3.8 (1/1) -> 3.3
+    'AXSUSDT': 2.3,     # 0 | 1 | 4 -> 3 (0/1) -> 2.3
+
+    'GALAUSDT': 4,  # 1 | 2 | 3 -> 3.3 (1/2) -> 4
+    'TRBUSDT': 6,   # 11 | 2 | 6 -> 5.7 (11/2) -> 6
 }
-# с 20:00 15.12
+# с 02:30 19.12
 
 class CoinTrader:
     def __init__(self, symbol, settings):
