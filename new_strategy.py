@@ -1,4 +1,4 @@
-from bybit_keys import bybit_api_key, bybit_secret_key
+from bybit_keys_test import bybit_api_key, bybit_secret_key
 from pybit.unified_trading import WebSocket, HTTP
 from time import sleep
 import numpy as np
@@ -15,7 +15,7 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(
 multipliers = {
     'GALAUSDT': 3.6,  # 0 | 0 | 3 -> 3.3 (1/2) -> 4 (1/0) -> 3.8 (2/0) -> 3.6 (4/0)
     'AXSUSDT': 5,     # 0 | 0 | 2.3 (11/2) -> 3.1 (36/4) -> 4 (9/1) -> 5 (3/0)
-    'BNBUSDT': 5,     # 1 | 0 | 2.7 (11/2) -> 3.5 (16/2) -> 4.3 (4/1) -> 5 (4/0)
+    'BNBUSDT': 5,     # 0 | 0 | 2.7 (11/2) -> 3.5 (16/2) -> 4.3 (4/1) -> 5 (4/0)
     'LINKUSDT': 8.5,  # 0 | 0 | 5.5 (11/1) -> 5.75 (16/2) -> 7.5 (6/1) -> 8.5 (3/0)
 
     'ADAUSDT': 4.8,   # 0 | 0 | 4.5 (12/1) -> 4.3 (22/1) -> 4.8 (/)
@@ -27,7 +27,6 @@ multipliers = {
     'DOGEUSDT': 5.1,  # 0 | 0 | 3 -> 3.8 (1/1) -> 3.3 (3/1) -> 4 (22/1) -> 4.5 (1/1) -> 5 (6/1) -> 5.1 (/)
     'AVAXUSDT': 6,    # 0 | 0 | 6 (/)
     'NEARUSDT': 6,     # 0 | 0 | 6 (/)
-    
 }
 # с 13:00 01.01
 

@@ -1,7 +1,8 @@
 .DS_Store
 venv/
 __pycache__/
-bybit_keys.py 
+bybit_keys_STABLE.py 
+bybit_keys_test.py
 env/
 venv/
 myenv/
