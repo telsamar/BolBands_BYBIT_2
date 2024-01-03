@@ -13,22 +13,22 @@ import time
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s', filename='coin_trader.log', filemode='w', encoding='utf-8')
 
 multipliers = {
-    'GALAUSDT': 3.6,  # 0 | 0 | 3 -> 3.3 (1/2) -> 4 (1/0) -> 3.8 (2/0) -> 3.6 (4/0)
-    'AXSUSDT': 5,     # 0 | 0 | 2.3 (11/2) -> 3.1 (36/4) -> 4 (9/1) -> 5 (3/0)
-    'BNBUSDT': 5,     # 0 | 0 | 2.7 (11/2) -> 3.5 (16/2) -> 4.3 (4/1) -> 5 (4/0)
-    'LINKUSDT': 8.5,  # 0 | 0 | 5.5 (11/1) -> 5.75 (16/2) -> 7.5 (6/1) -> 8.5 (3/0)
+    'BNBUSDT': 5,     # 0 | 0 | 2.7 (11/2) -> 3.5 (16/2) -> 4.3 (4/1) -> 5 (5/0)
+    'LINKUSDT': 8.5,  # 0 | 0 | 5.5 (11/1) -> 5.75 (16/2) -> 7.5 (6/1) -> 8.5 (7/0)
+    'MATICUSDT': 6,   # 0 | 0 | 3.7 (2/1) -> 3.2 (3/1) -> 4 (4/0) -> 4.1 (0/1) -> 5 (4/1) -> 6 (1/0)
+    'XRPUSDT': 6,     # 0 | 0 | 3.5 (6/1) -> 3.6 (13/1) -> 3.8 (9/1) -> 4.5 (1/1) -> 5 (0/1) -> 6 (2/0)
+    'DOTUSDT': 7.7,   # 0 | 0 | 5 -> 4.7 (5/1) -> 5 (31/2) -> 6 (9/1) -> 7.7 (1/0)
 
-    'ADAUSDT': 4.8,   # 0 | 0 | 4.5 (12/1) -> 4.3 (22/1) -> 4.8 (/)
-    'ORDIUSDT': 5.8,  # 0 | 0 | 5 -> 5.5 (16/1) -> 5.8 (/)
-    'MATICUSDT': 6,   # 0 | 0 | 3.7 (2/1) -> 3.2 (3/1) -> 4 (4/0) -> 4.1 (0/1) -> 5 (4/1) -> 6 (/)
-    'XRPUSDT': 5,     # 0 | 0 | 3.5 (6/1) -> 3.6 (13/1) -> 3.8 (9/1) -> 4.5 (1/1) -> 5 (/)
-    'TRBUSDT': 8,     # 0 | 0 | 6 -> 5.7 (11/2) -> 6 (0/1) -> 6.3 (5/1) -> 6.5 (18/3) -> 8 (/)
-    'DOTUSDT': 7.7,   # 0 | 0 | 5 -> 4.7 (5/1) -> 5 (31/2) -> 6 (9/1) -> 7.7 (/)
+    'GALAUSDT': 4.3,  # 0 | 0 | 3 -> 3.3 (1/2) -> 4 (1/0) -> 3.6 (5/1) -> 3.8 (4/2) -> 4.3 (/)
+    'ADAUSDT': 4.7,   # 0 | 0 | 4.5 (12/1) -> 4.3 (22/1) -> 4.7 (/)
+    'ORDIUSDT': 5.7,  # 0 | 0 | 5 -> 5.5 (16/1) -> 5.7 (/)
+    'AXSUSDT': 5.5,   # 0 | 0 | 2.3 (11/2) -> 3.1 (36/4) -> 4 (9/1) -> 5 (8/1) -> 5.5 (/)
+    'TRBUSDT': 7.3,   # 0 | 0 | 6 -> 5.7 (11/2) -> 6 (0/1) -> 6.3 (5/1) -> 6.5 (18/3) -> 7.3 (/)
     'DOGEUSDT': 5.1,  # 0 | 0 | 3 -> 3.8 (1/1) -> 3.3 (3/1) -> 4 (22/1) -> 4.5 (1/1) -> 5 (6/1) -> 5.1 (/)
-    'AVAXUSDT': 6,    # 0 | 0 | 6 (/)
-    'NEARUSDT': 6,     # 0 | 0 | 6 (/)
+    'AVAXUSDT': 4.5,  # 0 | 0 | 4.5 (/)
+    'NEARUSDT': 4.5,  # 0 | 0 | 4.5 (/)
 }
-# с 13:00 01.01
+# с 00:20 04.01
 
 class CoinTrader:
     def __init__(self, symbol, settings):
@@ -43,7 +43,7 @@ class CoinTrader:
         self.take = float(settings["take"])
         self.stop = float(settings["stop"])
         self.period = 60
-        self.multiplier = multipliers.get(symbol, 7)
+        self.multiplier = multipliers.get(symbol, 10)
         self.closing_prices = deque(maxlen=self.period)
         self.open_prices = deque(maxlen=self.period)
         self.high_prices = deque(maxlen=self.period)
